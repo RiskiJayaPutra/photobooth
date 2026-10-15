@@ -2,12 +2,14 @@
 Run: python tests/smoke_test.py
 """
 from __future__ import annotations
-import io, json, subprocess, sys, time, urllib.request, urllib.error, uuid
+import io, json, sqlite3, subprocess, sys, time, urllib.request, urllib.error, uuid
+from contextlib import closing
 from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT=Path(__file__).resolve().parents[1]
 PORT=17866
+DB=ROOT/'data'/'photobooth.db'
 BASE=f'http://127.0.0.1:{PORT}'
 
 def fetch(url, method='GET', data=None, headers=None, expected=200):
@@ -30,7 +32,7 @@ def multipart(fields, image):
 
 def run():
     server=subprocess.Popen([sys.executable,'-m','uvicorn','server:app','--host','127.0.0.1','--port',str(PORT)],cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-    rid=None
+    rid=first=None
     try:
         for _ in range(60):
             try:
@@ -50,7 +52,7 @@ def run():
         b=io.BytesIO();image.save(b,'JPEG',quality=92)
         fields={'name':'Penguji Labkom','program':'Teknik Komputer','whatsapp':'081234567891','template_id':'pink','consent':'true'}
         body,hdr=multipart(fields,b.getvalue())
-        fetch('/api/results','POST',body,headers=hdr,expected=200)
+        first=json.loads(fetch('/api/results','POST',body,headers=hdr,expected=200)[0])['id']
         fields_bad={**fields,'consent':'false'}
         body_bad, hdr_bad=multipart(fields_bad,b.getvalue())
         fetch('/api/results','POST',body_bad,headers=hdr_bad,expected=422)
@@ -70,11 +72,16 @@ def run():
         public=fetch('/r/'+rid)[0].decode()
         assert 'Penguji Labkom' not in public and '081234567891' not in public
         print('[OK] HD JPEG 2160x3840, <=20MB, QR and privacy-friendly result page')
-        entry=ROOT/'data'/'entries'/f'{rid}.json'
-        meta=json.loads(entry.read_text());meta['expires_at']=time.time()-1
-        entry.write_text(json.dumps(meta))
+        with closing(sqlite3.connect(DB)) as db:
+            row=db.execute('SELECT name, program, whatsapp, template_id FROM entries WHERE id=?',(rid,)).fetchone()
+        assert row==('Penguji Labkom','Teknik Komputer','6281234567891','pink'), row
+        print('[OK] participant data stored in SQLite')
+        with closing(sqlite3.connect(DB)) as db, db:
+            db.execute('UPDATE entries SET expires_at=? WHERE id=?',(time.time()-1,rid))
         fetch('/files/'+rid+'.jpg',expected=410)
-        assert not entry.exists()
+        with closing(sqlite3.connect(DB)) as db:
+            assert db.execute('SELECT 1 FROM entries WHERE id=?',(rid,)).fetchone() is None
+        assert not (ROOT/'data'/'results'/f'{rid}.jpg').exists()
         print('[OK] expired photo and contact data are removed')
         fetch('/files/../../server.py.jpg',expected=404) if False else None
         print('ALL SMOKE TESTS PASSED')
@@ -82,8 +89,9 @@ def run():
         server.terminate()
         try:server.wait(timeout=5)
         except subprocess.TimeoutExpired:server.kill()
-        if rid:
-            (ROOT/'data'/'entries'/f'{rid}.json').unlink(missing_ok=True)
-            (ROOT/'data'/'results'/f'{rid}.jpg').unlink(missing_ok=True)
+        for key in (first, rid):
+            if not key: continue
+            with closing(sqlite3.connect(DB)) as db, db: db.execute('DELETE FROM entries WHERE id=?',(key,))
+            (ROOT/'data'/'results'/f'{key}.jpg').unlink(missing_ok=True)
 
 if __name__=='__main__':run()

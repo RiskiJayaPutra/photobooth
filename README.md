@@ -85,7 +85,7 @@ labkom-photobooth/
 ├── requirements.txt
 ├── start-windows.bat
 └── data/                            # dibuat otomatis, JANGAN unggah publik
-    ├── entries/                    # data peserta (privat)
+    ├── photobooth.db               # SQLite: data peserta (privat)
     └── results/                    # foto hasil (privat)
 ```
 

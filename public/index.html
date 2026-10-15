@@ -3,528 +3,295 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#3B82F6" />
+  <meta name="theme-color" content="#0C1333" />
   <meta name="description" content="Photobooth Dies Natalis Teknik Unila 2026 bersama Laboratorium Teknik Komputer." />
-  <title>Labkom Photobooth · Dies Natalis Teknik Unila 2026</title>
-
-  <!-- Google Fonts: Atkinson Hyperlegible (Dyslexia-friendly Body), Plus Jakarta Sans (Friendly Display), JetBrains Mono (Timer) -->
+  <title>Photobooth Labkom · Dies Natalis Teknik Unila 2026</title>
+  <link rel="icon" type="image/png" href="/assets/brand/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet" />
-
-  <!-- Tailwind CSS CDN with Skylearn Design Tokens -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            sky: {
-              DEFAULT: '#3B82F6',
-              bright: '#60A5FA',
-              deep: '#1D4ED8',
-              soft: '#DBEAFE',
-              50: '#EFF6FF',
-            },
-            sun: {
-              DEFAULT: '#FBBF24',
-              bright: '#FCD34D',
-              deep: '#D97706',
-              soft: '#FEF3C7',
-            },
-            leaf: {
-              DEFAULT: '#22C55E',
-              bright: '#4ADE80',
-              deep: '#16A34A',
-              soft: '#DCFCE7',
-            },
-            coral: {
-              DEFAULT: '#F87171',
-              soft: '#FEE2E2',
-            },
-            berry: {
-              DEFAULT: '#A855F7',
-              soft: '#F3E8FF',
-            },
-            ink: {
-              DEFAULT: '#0F172A',
-              muted: '#475569',
-              subtle: '#94A3B8',
-              faint: '#CBD5E1',
-            },
-            surface: {
-              DEFAULT: '#F8FAFC',
-              elevated: '#FFFFFF',
-              sunken: '#F1F5F9',
-            },
-            outline: {
-              DEFAULT: '#E2E8F0',
-              strong: '#94A3B8',
-            }
-          },
-          fontFamily: {
-            display: ['"Plus Jakarta Sans"', 'Nunito', 'sans-serif'],
-            body: ['"Atkinson Hyperlegible"', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'monospace'],
-          },
-          borderRadius: {
-            'card': '20px',
-            'panel': '28px',
-            'btn': '16px',
-          },
-          boxShadow: {
-            'card': '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
-            'card-hover': '0 12px 28px -4px rgba(15, 23, 42, 0.09)',
-            'sky-lift': '0 12px 32px rgba(59, 130, 246, 0.20)',
-          }
-        }
-      }
-    }
-  </script>
-
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
 </head>
-<body class="bg-[#FAFAFC] text-ink min-h-screen flex flex-col font-body selection:bg-sky-soft selection:text-sky-deep">
+<body data-step="register">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3.5 8.5h3.5l2-3h6l2 3h3.5v11h-17z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 20l1.4-4.2A8 8 0 1 1 8.3 18.7z"/></symbol>
+    <symbol id="i-frame" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8v3H8zM8 12h8v3H8z"/></symbol>
+  </svg>
 
-  <!-- Topbar: Full width, clean, warm and trustworthy -->
-  <header class="w-full bg-white border-b border-outline px-6 sm:px-10 lg:px-14 py-4 flex items-center justify-between shadow-sm sticky top-0 z-50">
-    <div class="flex items-center gap-4">
-      <div class="w-12 h-12 rounded-2xl bg-sky flex items-center justify-center text-white font-display font-extrabold text-xl shadow-md shadow-sky/30">
-        &lt;/&gt;
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <img src="/assets/brand/logo.png" alt="Laboratorium Teknik Komputer Unila" width="78" height="44" />
+        <div class="brand-text">
+          <b>Photobooth Labkom</b>
+          <span>Dies Natalis Teknik Unila 2026</span>
+        </div>
       </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="font-display font-black text-xl text-ink tracking-tight">LABKOM</span>
-          <span class="text-xs font-display font-extrabold px-2.5 py-0.5 rounded-full bg-sky-soft text-sky-deep uppercase tracking-wider">Photobooth</span>
-        </div>
-        <p class="text-xs text-ink-muted font-medium">Laboratorium Teknik Komputer · Universitas Lampung</p>
-      </div>
-    </div>
+      <ol class="stepper" aria-label="Tahapan photobooth">
+        <li class="step active" data-step="register" aria-current="step"><span class="num">1</span><span class="label">Data diri</span></li>
+        <li class="step" data-step="template"><span class="num">2</span><span class="label">Pilih frame</span></li>
+        <li class="step" data-step="camera"><span class="num">3</span><span class="label">Foto</span></li>
+        <li class="step" data-step="result"><span class="num">4</span><span class="label">Ambil hasil</span></li>
+      </ol>
+    </header>
 
-    <!-- Event & System Health Badge -->
-    <div class="flex items-center gap-3">
-      <div class="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-sun-soft border border-sun text-sun-deep text-xs font-display font-bold">
-        <span>★</span> DIES NATALIS TEKNIK 2026
-      </div>
-      <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-leaf-soft border border-leaf text-leaf-deep text-xs font-display font-bold">
-        <span class="w-2 h-2 rounded-full bg-leaf animate-pulse"></span>
-        <span>Sistem Siap</span>
-      </div>
-    </div>
-  </header>
+    <main class="stage">
 
-  <!-- Full-Width Responsive Container (No empty margins on wide screens) -->
-  <main class="w-full max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 py-6 flex-1 flex flex-col gap-6">
+      <!-- 1. Registrasi -->
+      <section id="pane-register" class="pane pane-register" aria-labelledby="register-title">
+        <div class="intro">
+          <h1 id="register-title" tabindex="-1" data-focus>Dies Natalis<br />Teknik Unila<br />2026</h1>
+          <p class="lede">Tiga foto, empat pilihan frame, dan hasil HD yang langsung bisa kamu simpan di HP lewat QR.</p>
+          <div class="fan" id="hero-fan" aria-hidden="true"></div>
+        </div>
 
-    <!-- Hero Title Banner (Clean, warm, no AI slop) -->
-    <div class="w-full bg-white border border-outline rounded-2xl sm:rounded-panel p-6 sm:p-8 shadow-card flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-      <div>
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-soft text-sky-deep text-xs font-display font-extrabold uppercase tracking-wider mb-2">
-          <span>✦</span> Pengalaman Foto Dies Natalis
-        </div>
-        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-display font-extrabold text-ink tracking-tight">
-          Setiap Momen, <span class="text-sky underline decoration-sky-bright decoration-wavy decoration-2">Jadi Cerita.</span>
-        </h1>
-        <p class="text-ink-muted text-base sm:text-lg mt-1 font-body">
-          3 foto seru, 4 pilihan frame kreatif, dan hasil cetak HD 4K siap diunduh langsung ke HP kamu.
-        </p>
-      </div>
-
-      <!-- Stepper Pills -->
-      <nav class="flex items-center flex-wrap gap-2 sm:gap-3 bg-surface-sunken p-2 rounded-2xl border border-outline" aria-label="Tahapan photobooth">
-        <div class="step active" data-step="register">
-          <span>1</span>
-          <span>Data Diri</span>
-        </div>
-        <div class="step" data-step="template">
-          <span>2</span>
-          <span>Pilih Frame</span>
-        </div>
-        <div class="step" data-step="camera">
-          <span>3</span>
-          <span>Foto Seru</span>
-        </div>
-        <div class="step" data-step="result">
-          <span>4</span>
-          <span>Selesai</span>
-        </div>
-      </nav>
-    </div>
-
-    <!-- PANEL 01: Registrasi Data Peserta (2-Column Full Width) -->
-    <section id="pane-register" class="w-full bg-white border border-outline rounded-2xl sm:rounded-panel p-6 sm:p-10 lg:p-12 shadow-card">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        
-        <!-- Left: Form Input -->
-        <div class="lg:col-span-7">
-          <div class="mb-6">
-            <span class="text-xs font-display font-bold text-sky uppercase tracking-wider">Langkah 01 / Mulai Di Sini</span>
-            <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-ink mt-1">Kenalan Dulu, Yuk! 👋</h2>
-            <p class="text-ink-muted text-base mt-1">
-              Isi data diri singkat kamu agar kami bisa menyiapkan pengiriman link hasil foto.
-            </p>
+        <form id="registration-form" class="panel form-panel" novalidate>
+          <div class="panel-head">
+            <h2>Isi data dulu</h2>
+            <p>Nomor WhatsApp dipakai untuk menyiapkan pesan berisi link hasil fotomu.</p>
           </div>
 
-          <form id="registration-form" class="flex flex-col gap-5">
-            <div>
-              <label for="field-name" class="block text-sm font-display font-bold text-ink mb-1.5">
-                Nama Lengkap
-              </label>
-              <input
-                id="field-name"
-                autocomplete="name"
-                required
-                maxlength="80"
-                minlength="2"
-                placeholder="Contoh: Sinta Febriana"
-                class="w-full bg-surface border-2 border-outline rounded-xl px-4 py-3.5 text-ink text-base font-body focus:bg-white focus:border-sky focus:ring-4 focus:ring-sky-soft outline-none transition"
-              />
-            </div>
+          <div class="field">
+            <label for="field-name">Nama lengkap</label>
+            <input id="field-name" autocomplete="name" required maxlength="80" minlength="2" placeholder="Contoh: Sinta Febriana" aria-describedby="field-name-error" />
+            <p class="field-error" id="field-name-error" hidden></p>
+          </div>
 
-            <div>
-              <label for="field-program" class="block text-sm font-display font-bold text-ink mb-1.5">
-                Program Studi / Jurusan
-              </label>
-              <input
-                id="field-program"
-                required
-                maxlength="80"
-                minlength="2"
-                placeholder="Contoh: Teknik Komputer"
-                class="w-full bg-surface border-2 border-outline rounded-xl px-4 py-3.5 text-ink text-base font-body focus:bg-white focus:border-sky focus:ring-4 focus:ring-sky-soft outline-none transition"
-              />
-            </div>
+          <div class="field">
+            <label for="field-program">Program studi</label>
+            <input id="field-program" required maxlength="80" minlength="2" placeholder="Contoh: Teknik Komputer" aria-describedby="field-program-error" />
+            <p class="field-error" id="field-program-error" hidden></p>
+          </div>
 
-            <div>
-              <label for="field-phone" class="block text-sm font-display font-bold text-ink mb-1.5">
-                Nomor WhatsApp
-              </label>
-              <div class="relative flex items-center">
-                <span class="absolute left-4 text-lg pointer-events-none">🇮🇩</span>
-                <input
-                  id="field-phone"
-                  type="tel"
-                  inputmode="tel"
-                  autocomplete="tel"
-                  required
-                  placeholder="08xxxxxxxxxx"
-                  class="w-full bg-surface border-2 border-outline rounded-xl pl-12 pr-4 py-3.5 text-ink text-base font-body focus:bg-white focus:border-sky focus:ring-4 focus:ring-sky-soft outline-none transition"
-                />
-              </div>
-              <p class="text-xs text-ink-muted mt-1.5">
-                Nomor digunakan untuk membuka chat WhatsApp siap kirim dengan tautan foto Anda.
-              </p>
-            </div>
+          <div class="field">
+            <label for="field-phone">Nomor WhatsApp</label>
+            <input id="field-phone" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" placeholder="Contoh: 0812 3456 7890" aria-describedby="field-phone-error" />
+            <p class="field-error" id="field-phone-error" hidden></p>
+          </div>
 
-            <!-- Privacy Consent -->
-            <label class="flex items-start gap-3 p-4 rounded-xl bg-surface-sunken border border-outline cursor-pointer hover:bg-sky-50/50 transition">
-              <input
-                type="checkbox"
-                id="field-consent"
-                required
-                class="mt-1 w-5 h-5 rounded-md text-sky focus:ring-sky border-outline accent-sky cursor-pointer"
-              />
-              <span class="text-xs sm:text-sm text-ink-muted leading-relaxed font-body">
-                Saya setuju foto dan data kontak disimpan sementara (maksimal 7 hari) untuk keperluan unduh photobooth. Tautan hasil foto dapat dibuka secara privat oleh siapa pun yang memiliki tautannya.
-              </span>
+          <div class="field">
+            <label class="consent">
+              <input type="checkbox" id="field-consent" required aria-describedby="field-consent-error" />
+              <span>Saya setuju foto dan data kontak disimpan sementara, maksimal 7 hari, untuk keperluan unduh. Siapa pun yang memegang link hasil foto dapat membukanya.</span>
             </label>
+            <p class="field-error" id="field-consent-error" hidden></p>
+          </div>
 
-            <!-- Submit Action -->
-            <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <span class="text-xs text-ink-subtle flex items-center gap-1.5">
-                <span>🔒</span> Data Anda aman dan tidak disebarkan ke publik.
-              </span>
-              <button type="submit" class="btn-skylearn-primary w-full sm:w-auto">
-                Lanjut Pilih Frame <span>→</span>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">
+            <span>Lanjut pilih frame</span>
+            <svg class="ico" aria-hidden="true"><use href="#i-arrow-right"/></svg>
+          </button>
+        </form>
+      </section>
+
+      <!-- 2. Pilih template -->
+      <section id="pane-template" class="pane pane-template" aria-labelledby="template-title" hidden>
+        <div class="pane-bar">
+          <div>
+            <h2 id="template-title" tabindex="-1" data-focus>Pilih frame</h2>
+            <p>Ketiga fotomu akan mengisi jendela kosong di frame yang kamu pilih.</p>
+          </div>
+          <div class="bar-actions">
+            <button type="button" class="btn btn-ghost" data-back="register">
+              <svg class="ico" aria-hidden="true"><use href="#i-arrow-left"/></svg>
+              <span>Ubah data</span>
+            </button>
+            <button type="button" id="template-next" class="btn btn-primary btn-lg" disabled>
+              <svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg>
+              <span>Nyalakan kamera</span>
+            </button>
+          </div>
+        </div>
+        <div id="template-grid" class="template-grid" data-state="loading" aria-label="Pilihan frame">
+          <div class="template-skeleton"></div><div class="template-skeleton"></div><div class="template-skeleton"></div><div class="template-skeleton"></div>
+        </div>
+      </section>
+
+      <!-- 3. Kamera -->
+      <section id="pane-camera" class="pane pane-camera" aria-labelledby="capture-title" hidden>
+        <div class="cam-main">
+          <div class="cam-fit">
+            <div class="camera-shell" id="camera-shell">
+              <video id="camera-video" autoplay muted playsinline aria-label="Pratinjau kamera"></video>
+              <div class="crop-guide" id="crop-guide" aria-hidden="true"></div>
+              <div class="hud" aria-hidden="true">
+                <span class="hud-chip"><i class="rec"></i><span id="hud-shot">Foto 1 dari 3</span></span>
+              </div>
+              <div class="countdown" id="countdown" aria-hidden="true" hidden>
+                <div class="countdown-ring">
+                  <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="54"/><circle class="drain" cx="60" cy="60" r="54" pathLength="100"/></svg>
+                  <span id="countdown-num">5</span>
+                </div>
+              </div>
+              <div class="flash" id="flash" aria-hidden="true"></div>
+              <div class="camera-message busy" id="camera-message" role="status">
+                <span class="spinner" aria-hidden="true"></span>
+                <svg class="ico ico-alert" aria-hidden="true"><use href="#i-alert"/></svg>
+                <p id="camera-message-text">Menyiapkan kamera…</p>
+                <div class="camera-actions" id="camera-actions" hidden>
+                  <button type="button" class="btn btn-primary" id="camera-retry">
+                    <svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg><span>Coba lagi</span>
+                  </button>
+                  <button type="button" class="btn btn-ghost" id="camera-back">
+                    <svg class="ico" aria-hidden="true"><use href="#i-frame"/></svg><span>Ganti frame</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cam-controls">
+            <label class="switch">
+              <input type="checkbox" id="mirror-camera" checked />
+              <span class="switch-track" aria-hidden="true"></span>
+              <span>Mode cermin</span>
+            </label>
+            <button type="button" id="capture-button" class="shutter" disabled>
+              <span class="shutter-ring" aria-hidden="true"></span>
+              <span id="capture-label">Ambil foto 1</span>
+            </button>
+            <div class="cam-aside-actions">
+              <button type="button" id="review-button" class="btn btn-ghost" hidden>
+                <span>Lihat hasil</span>
+                <svg class="ico" aria-hidden="true"><use href="#i-arrow-right"/></svg>
+              </button>
+              <button type="button" id="restart-button" class="btn btn-primary" hidden>
+                <svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>
+                <span>Ulang sesi</span>
               </button>
             </div>
-          </form>
-        </div>
-
-        <!-- Right: Skylearn Info Card (Fills screen pleasantly) -->
-        <div class="lg:col-span-5 bg-surface-sunken border-2 border-outline rounded-2xl p-6 sm:p-8 flex flex-col gap-6">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-sun-soft flex items-center justify-center text-sun-deep text-xl font-bold">
-              ★
-            </div>
-            <div>
-              <h3 class="font-display font-extrabold text-lg text-ink">Photobooth Kiosk Unila</h3>
-              <p class="text-xs text-ink-muted">Dies Natalis Fakultas Teknik 2026</p>
-            </div>
-          </div>
-
-          <div class="space-y-4">
-            <div class="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-outline">
-              <span class="w-7 h-7 rounded-lg bg-sky-soft text-sky-deep font-display font-extrabold text-sm flex items-center justify-center flex-shrink-0">1</span>
-              <div>
-                <b class="text-sm font-display text-ink block">4 Pilihan Frame Kreatif</b>
-                <p class="text-xs text-ink-muted mt-0.5">Kamen Rider Decade, Pink Kawaii, Sea Friends, dan Maskot Rusa Unila.</p>
-              </div>
-            </div>
-
-            <div class="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-outline">
-              <span class="w-7 h-7 rounded-lg bg-leaf-soft text-leaf-deep font-display font-extrabold text-sm flex items-center justify-center flex-shrink-0">2</span>
-              <div>
-                <b class="text-sm font-display text-ink block">3 Sesi Foto & Retake Bebas</b>
-                <p class="text-xs text-ink-muted mt-0.5">Waktu sesi 2 menit dengan countdown 5 detik per foto. Bisa retake foto yang kurang pas.</p>
-              </div>
-            </div>
-
-            <div class="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-outline">
-              <span class="w-7 h-7 rounded-lg bg-berry-soft text-berry font-display font-extrabold text-sm flex items-center justify-center flex-shrink-0">3</span>
-              <div>
-                <b class="text-sm font-display text-ink block">Format HD 4K (9:16) & QR Code</b>
-                <p class="text-xs text-ink-muted mt-0.5">Langsung scan QR dengan kamera HP kamu tanpa perlu install aplikasi apapun.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl bg-sky-soft/60 border border-sky-bright/40 text-xs text-sky-deep leading-relaxed">
-            💡 <b>Tips Foto Bagus:</b> Pastikan wajah kamu berada di tengah frame dan tersenyum ramah saat countdown selesai!
           </div>
         </div>
 
-      </div>
-    </section>
-
-    <!-- PANEL 02: Pemilihan Template Frame (Full Width 4-Col Grid) -->
-    <section id="pane-template" class="w-full bg-white border border-outline rounded-2xl sm:rounded-panel p-6 sm:p-10 lg:p-12 shadow-card" hidden>
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <span class="text-xs font-display font-bold text-sky uppercase tracking-wider">Langkah 02 / Gaya Kamu</span>
-          <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-ink mt-1">Pilih Frame Favoritmu ✨</h2>
-          <p class="text-ink-muted text-base mt-1">Setiap template memuat 3 foto dengan tata letak unik beresolusi tinggi 9:16.</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <button type="button" class="btn-skylearn-secondary" data-back="register">
-            ← Kembali
+        <aside class="cam-rail">
+          <div class="timer" id="session-timer" aria-live="off">
+            <span>Sisa waktu sesi</span>
+            <strong>02:00</strong>
+            <i class="timer-bar" aria-hidden="true"></i>
+          </div>
+          <div class="capture-head">
+            <h2 id="capture-title" tabindex="-1" data-focus>Foto 1 dari 3</h2>
+            <p id="camera-status" aria-live="polite">Posisikan wajah di area terang, lalu tekan Ambil foto.</p>
+          </div>
+          <div class="live-poster" aria-hidden="true">
+            <div class="print print-sm">
+              <canvas id="live-poster" width="470" height="836"></canvas>
+              <div class="slot-marks" id="live-marks"></div>
+            </div>
+          </div>
+          <div id="shot-slots" class="shot-slots" aria-label="Foto yang sudah diambil"></div>
+          <button type="button" id="change-frame" class="btn btn-quiet">
+            <svg class="ico" aria-hidden="true"><use href="#i-frame"/></svg>
+            <span>Ganti frame</span>
           </button>
-          <button type="button" id="template-next" class="btn-skylearn-primary" disabled>
-            Aktifkan Kamera →
+        </aside>
+      </section>
+
+      <!-- 3b. Review & retake -->
+      <section id="pane-review" class="pane pane-review" aria-labelledby="review-title" hidden>
+        <div class="review-poster">
+          <div class="print">
+            <canvas id="preview-canvas" width="720" height="1280" aria-label="Pratinjau hasil photobooth"></canvas>
+            <div class="slot-marks" id="review-marks" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="review-side">
+          <div class="panel-head">
+            <h2 id="review-title" tabindex="-1" data-focus>Cek hasilnya</h2>
+            <p>Ada pose yang kurang pas? Ulangi foto itu saja. Foto lain tetap tersimpan.</p>
+          </div>
+          <div id="review-shots" class="review-shots"></div>
+          <div class="review-time" id="review-timer">
+            <span>Sisa waktu untuk ulang foto</span>
+            <strong id="review-time">02:00</strong>
+          </div>
+          <p class="note" id="review-expired" hidden>Waktu ulang foto sudah habis. Kamu tetap bisa menyimpan hasil ini.</p>
+          <button type="button" id="confirm-button" class="btn btn-primary btn-lg btn-block">
+            <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>
+            <span>Simpan &amp; buat QR</span>
           </button>
-        </div>
-      </div>
-
-      <!-- Dynamic Template Grid -->
-      <div id="template-grid" class="template-grid"></div>
-    </section>
-
-    <!-- PANEL 03: Live Camera Photobooth (Wide Stage + Sidebar) -->
-    <section id="pane-camera" class="w-full bg-white border border-outline rounded-2xl sm:rounded-panel p-6 sm:p-10 lg:p-12 shadow-card" hidden>
-      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-outline mb-8">
-        <div>
-          <span class="text-xs font-display font-bold text-sky uppercase tracking-wider">Langkah 03 / Waktunya Pose!</span>
-          <h2 id="capture-title" class="text-2xl sm:text-3xl font-display font-extrabold text-ink mt-1">Foto 1 dari 3</h2>
-          <p class="text-ink-muted text-base mt-1">Tekan tombol mulai foto di bawah, lalu bersiaplah selama hitung mundur 5 detik.</p>
+          <p class="fine">JPG 2160 × 3840 px, maksimal 20 MB, disimpan 7 hari.</p>
         </div>
 
-        <div class="timer" id="session-timer" aria-live="polite">
-          <span>SISA WAKTU</span>
-          <strong>02:00</strong>
-        </div>
-      </div>
-
-      <!-- Camera Stage & Sidebar Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        <!-- Main Camera Stage (Col 8) -->
-        <div class="lg:col-span-8 flex flex-col gap-4">
-          <div class="camera-shell">
-            <video id="camera-video" autoplay muted playsinline aria-label="Pratinjau kamera"></video>
-            <div class="camera-message" id="camera-message">Menyiapkan kamera...</div>
-            <div class="countdown" id="countdown" hidden>5</div>
-            <span class="viewfinder top-left"></span>
-            <span class="viewfinder top-right"></span>
-            <span class="viewfinder bottom-left"></span>
-            <span class="viewfinder bottom-right"></span>
-            <div class="live-badge">
-              <span class="dot"></span>
-              <span>LIVE KAMERA</span>
-            </div>
-          </div>
-
-          <!-- Controls under camera -->
-          <div class="flex flex-wrap items-center justify-between gap-4 px-2 py-1">
-            <label class="flex items-center gap-2 cursor-pointer text-sm font-bold text-ink-muted">
-              <input type="checkbox" id="mirror-camera" checked class="w-4 h-4 rounded text-sky accent-sky" />
-              <span>Mirror Kamera (Selfie)</span>
-            </label>
-            <span id="camera-status" class="text-sm text-ink-subtle font-medium">
-              Posisikan wajah di dalam jendela kamera
-            </span>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
-            <button id="capture-button" class="btn-skylearn-primary text-xl px-10 py-5" disabled>
-              ◉ Mulai Foto 1
-            </button>
-            <button id="review-button" class="btn-skylearn-primary bg-leaf hover:bg-leaf-deep" hidden>
-              Lihat Hasil Foto →
-            </button>
-            <button id="restart-button" class="btn-skylearn-secondary" hidden>
-              Ulang Sesi
-            </button>
-          </div>
-        </div>
-
-        <!-- Sidebar: Shot Slots (Col 4) -->
-        <div class="lg:col-span-4 bg-surface-sunken border border-outline rounded-2xl p-6 flex flex-col gap-5">
-          <div class="flex items-center justify-between">
-            <h3 class="font-display font-extrabold text-lg text-ink">Hasil Jepretan</h3>
-            <span id="capture-count" class="px-3 py-1 rounded-full bg-sky-soft text-sky-deep font-display font-bold text-xs">0/3</span>
-          </div>
-
-          <!-- Shot thumbnails list -->
-          <div id="shot-slots" class="shot-slots"></div>
-
-          <div class="p-4 rounded-xl bg-white border border-outline text-xs text-ink-muted leading-relaxed">
-            💡 <b>Instruksi Cepat:</b> Anda memiliki waktu 2 menit untuk 3 foto. Setelah semua foto tersimpan, Anda dapat mengecek dan melakukan <b>retake</b> pada foto yang diinginkan.
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- PANEL 04: Review Hasil Foto & Retake (Split Grid) -->
-    <section id="pane-review" class="w-full bg-white border border-outline rounded-2xl sm:rounded-panel p-6 sm:p-10 lg:p-12 shadow-card" hidden>
-      <div class="mb-8">
-        <span class="text-xs font-display font-bold text-sky uppercase tracking-wider">Langkah 04 / Pengecekan Akhir</span>
-        <h2 class="text-2xl sm:text-3xl font-display font-extrabold text-ink mt-1">Cek Fotomu Dulu! 💫</h2>
-        <p class="text-ink-muted text-base mt-1">
-          Foto kamu sudah digabung rapi di belakang frame. Jika ada pose yang ingin diulang, silakan tekan tombol <b>Retake</b>.
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        <!-- Canvas Preview Container (Col 6) -->
-        <div class="lg:col-span-6 flex justify-center">
-          <div class="poster-preview w-full max-w-[460px]">
-            <canvas id="preview-canvas" width="564" height="1002" aria-label="Pratinjau photobooth"></canvas>
-          </div>
-        </div>
-
-        <!-- Review Controls & Retake List (Col 6) -->
-        <div class="lg:col-span-6 flex flex-col gap-6">
-          <div class="bg-surface-sunken border border-outline rounded-2xl p-6 flex flex-col gap-4">
-            <h3 class="font-display font-extrabold text-xl text-ink">Daftar Foto Kamu</h3>
-            <p class="text-sm text-ink-muted">Setiap foto dapat diulang tanpa mempengaruhi foto lainnya.</p>
-            
-            <div id="review-shots" class="review-shots"></div>
-
-            <div class="flex items-center justify-between pt-4 border-t border-outline text-sm">
-              <span class="text-ink-muted font-medium">Sisa waktu sesi:</span>
-              <strong id="review-time" class="font-mono font-bold text-lg text-ink">02:00</strong>
-            </div>
-          </div>
-
-          <button id="confirm-button" class="btn-skylearn-primary w-full text-lg py-5 shadow-lg">
-            ✓ Konfirmasi & Cetak Foto HD 4K
-          </button>
-          <p class="text-center text-xs text-ink-subtle">
-            Resolusi 2160 × 3840 px (9:16) · Format JPG berkualitas tinggi
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- PANEL 05: Hasil Akhir, Unduh & QR Code (Full Width Celebration) -->
-    <section id="pane-result" class="w-full bg-white border border-outline rounded-2xl sm:rounded-panel p-6 sm:p-10 lg:p-12 shadow-card" hidden>
-      <div class="text-center max-w-2xl mx-auto mb-10">
-        <div class="w-16 h-16 rounded-full bg-leaf-soft border-2 border-leaf flex items-center justify-center text-leaf-deep text-3xl font-bold mx-auto mb-4 shadow-sm">
-          ✓
-        </div>
-        <span class="text-xs font-display font-extrabold text-sky uppercase tracking-wider">Hasil Siap!</span>
-        <h2 class="text-3xl sm:text-4xl font-display font-extrabold text-ink mt-1">Yeay, Foto Kamu Jadi! 🎉</h2>
-        <p class="text-ink-muted text-base mt-2">
-          Terima kasih telah berpartisipasi dalam Dies Natalis Teknik Unila 2026. Simpan kenangan spesialmu sekarang!
-        </p>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start max-w-5xl mx-auto">
-        <!-- Photo Result Image (Col 6) -->
-        <div class="lg:col-span-6 flex justify-center">
-          <div class="p-3 bg-surface-sunken border-2 border-outline rounded-2xl shadow-card">
-            <img id="result-image" alt="Hasil foto final photobooth" class="rounded-xl max-h-[600px] w-auto object-contain shadow-sm" />
-          </div>
-        </div>
-
-        <!-- Share & Download Controls (Col 6) -->
-        <div class="lg:col-span-6 flex flex-col gap-6">
-          <div class="bg-surface-sunken border border-outline rounded-2xl p-6 flex flex-col gap-5">
-            <!-- Share Tabs -->
-            <div class="flex gap-3">
-              <button class="share-tab selected" data-share="qr">▦ QR Code</button>
-              <button class="share-tab" data-share="wa">◉ WhatsApp</button>
-            </div>
-
-            <!-- QR Pane -->
-            <div id="share-qr" class="flex flex-col items-center text-center py-4">
-              <div class="p-4 bg-white border-2 border-outline rounded-2xl shadow-sm mb-4">
-                <img id="qr-image" alt="QR Code unduhan" class="w-48 h-48 object-contain" />
+        <div class="upload-overlay" id="upload-overlay" hidden>
+          <div class="upload-card" role="status" aria-live="polite">
+            <h3 id="upload-title">Menyimpan fotomu…</h3>
+            <ol class="upload-steps" id="upload-steps">
+              <li data-state="pending"><span class="dot" aria-hidden="true"></span>Menyusun foto HD 2160 × 3840</li>
+              <li data-state="pending"><span class="dot" aria-hidden="true"></span>Mengunggah ke server photobooth</li>
+              <li data-state="pending"><span class="dot" aria-hidden="true"></span>Menyiapkan QR dan link unduhan</li>
+            </ol>
+            <div class="upload-error" id="upload-error" hidden>
+              <p id="upload-error-text"></p>
+              <div class="upload-actions">
+                <button type="button" class="btn btn-primary" id="upload-retry">
+                  <svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg><span>Coba simpan lagi</span>
+                </button>
+                <button type="button" class="btn btn-ghost" id="upload-cancel">Kembali ke hasil</button>
               </div>
-              <h4 class="font-display font-extrabold text-lg text-ink">Scan & Simpan di HP</h4>
-              <p class="text-sm text-ink-muted max-w-xs mt-1">
-                Buka kamera HP Anda, arahkan ke QR Code di atas untuk membuka dan mengunduh foto kualitas penuh.
-              </p>
-              <span id="qr-network-note" class="text-xs text-sun-deep bg-sun-soft px-3 py-1.5 rounded-lg border border-sun mt-3" hidden>
-                * Pastikan HP Anda terhubung ke jaringan Wi-Fi acara yang sama.
-              </span>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <!-- WhatsApp Pane -->
-            <div id="share-wa" class="flex flex-col items-center text-center py-6" hidden>
-              <div class="w-16 h-16 rounded-full bg-leaf-soft text-leaf-deep flex items-center justify-center text-3xl font-bold mb-3">
-                ✆
-              </div>
-              <h4 class="font-display font-extrabold text-lg text-ink">Kirim via WhatsApp</h4>
-              <p class="text-sm text-ink-muted max-w-xs mt-1 mb-5">
-                Kami telah menyiapkan pesan teks dan link foto siap kirim langsung ke nomor Anda.
-              </p>
-              <a id="wa-link" target="_blank" rel="noopener noreferrer" class="btn-skylearn-whatsapp w-full">
-                Buka WhatsApp & Kirim Link →
+      <!-- 4. Hasil -->
+      <section id="pane-result" class="pane pane-result" aria-labelledby="result-title" hidden>
+        <div class="result-photo">
+          <div class="print">
+            <img id="result-image" alt="Hasil foto final photobooth" />
+          </div>
+        </div>
+
+        <div class="result-share">
+          <p class="saved-badge"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Foto tersimpan</p>
+          <h2 id="result-title" tabindex="-1" data-focus>Scan untuk ambil fotomu</h2>
+          <div class="qr-block">
+            <div class="qr-card"><img id="qr-image" alt="QR code halaman unduhan foto" width="280" height="280" /></div>
+            <div class="qr-help">
+              <p>Buka kamera HP, arahkan ke QR, lalu ketuk link yang muncul. Foto HD bisa diunduh selama 7 hari.</p>
+              <p class="note" id="qr-network-note" hidden>HP harus terhubung ke Wi-Fi yang sama dengan komputer photobooth.</p>
+            </div>
+          </div>
+
+          <div class="share-actions">
+            <a id="wa-link" target="_blank" rel="noopener noreferrer" class="btn btn-wa btn-lg">
+              <svg class="ico" aria-hidden="true"><use href="#i-chat"/></svg>
+              <span>Buka chat WhatsApp</span>
+            </a>
+            <p class="fine">Pesan berisi link sudah disiapkan. Tekan Kirim di WhatsApp untuk mengirimnya.</p>
+            <div class="share-row">
+              <a id="download-link" download="photobooth-unila-2026.jpg" class="btn btn-ghost">
+                <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg><span>Unduh file</span>
               </a>
-            </div>
-
-            <!-- Link & Download Actions -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-outline">
-              <button id="copy-link" class="btn-skylearn-secondary text-sm py-3.5">
-                ⧉ Salin Link Foto
+              <button type="button" id="copy-link" class="btn btn-ghost">
+                <svg class="ico" aria-hidden="true"><use href="#i-link"/></svg><span>Salin link</span>
               </button>
-              <a id="download-link" download="photobooth-unila-2026.jpg" class="btn-skylearn-primary text-sm py-3.5 text-center">
-                ↓ Unduh File HD
-              </a>
             </div>
-
-            <p class="text-center text-xs text-ink-subtle">
-              Foto tersimpan aman di server selama 7 hari.
-            </p>
           </div>
 
-          <!-- New Session Button -->
-          <button id="new-session" class="btn-skylearn-primary w-full text-lg py-4">
-            Mulai Sesi Baru ↗
-          </button>
+          <div class="next-row">
+            <button type="button" id="new-session" class="btn btn-primary">
+              <span>Selesai, sesi baru</span>
+              <svg class="ico" aria-hidden="true"><use href="#i-arrow-right"/></svg>
+            </button>
+            <p id="idle-note" class="fine"></p>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Friendly Toast Message -->
-    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    </main>
+  </div>
 
-  </main>
-
-  <!-- Clean, Trusted Footer -->
-  <footer class="w-full bg-white border-t border-outline py-6 px-6 text-center text-sm text-ink-muted font-body mt-auto">
-    <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-      <p>
-        Dibuat dengan dedikasi oleh <b>Laboratorium Teknik Komputer</b> · Universitas Lampung
-      </p>
-      <p class="text-xs text-ink-subtle">
-        Dies Natalis Fakultas Teknik Unila 2026 · Skylearn Accessible Design
-      </p>
-    </div>
-  </footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script src="/assets/app.js" defer></script>
 </body>

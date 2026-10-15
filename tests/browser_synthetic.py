@@ -2,22 +2,23 @@
 Optional dependency: pip install playwright; requires local chromium binary.
 """
 from pathlib import Path
-import json, base64
+import json, base64, os, tempfile
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
-html=(ROOT/'public/index.html').read_text()
+OUT=Path(os.getenv('SHOT_DIR', tempfile.gettempdir()))
+html=(ROOT/'public/index.html').read_text(encoding='utf-8')
 html=html.replace('<link rel="stylesheet" href="/assets/style.css" />','')
 html=html.replace('<script src="/assets/app.js" defer></script>','')
-css=(ROOT/'public/assets/style.css').read_text()
-js=(ROOT/'public/assets/app.js').read_text().replace('const SHOT_COUNTDOWN = 5;', 'const SHOT_COUNTDOWN = 0;')
-config=json.loads((ROOT/'public/assets/templates/config.json').read_text())
+css=(ROOT/'public/assets/style.css').read_text(encoding='utf-8')
+js=(ROOT/'public/assets/app.js').read_text(encoding='utf-8').replace('const SHOT_COUNTDOWN = 5;', 'const SHOT_COUNTDOWN = 0;')
+config=json.loads((ROOT/'public/assets/templates/config.json').read_text(encoding='utf-8'))
 for t in config:
    jpg=(ROOT/'public'/t['preview'].lstrip('/')).read_bytes()
    t['preview']='data:image/jpeg;base64,'+base64.b64encode(jpg).decode('ascii')
    img=(ROOT/'public'/t['asset'].lstrip('/')).read_bytes() if t['id']=='rusa' else b''
    t['asset']='data:image/png;base64,'+base64.b64encode(img).decode('ascii') if img else ''
 with sync_playwright() as p:
- browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox','--use-fake-ui-for-media-stream'])
+ browser=p.chromium.launch(executable_path=os.getenv('CHROMIUM_PATH') or None,headless=True,args=['--no-sandbox','--use-fake-ui-for-media-stream'])
  page=browser.new_page(viewport={'width':1365,'height':920},device_scale_factor=1)
  errors=[]
  page.on('pageerror',lambda err:errors.append(str(err)))
@@ -45,14 +46,14 @@ with sync_playwright() as p:
 }''',config)
  page.add_script_tag(content=js)
  page.wait_for_selector('.template-card',state='attached')
- page.screenshot(path='/mnt/data/photobooth-registrasi.png',full_page=True)
+ page.screenshot(path=OUT/'photobooth-registrasi.png',full_page=True)
  page.fill('#field-name','Peserta Test')
  page.fill('#field-program','Teknik Informatika')
  page.fill('#field-phone','081234567890')
  page.check('#field-consent')
  page.click('#registration-form button[type="submit"]')
  assert page.locator('#pane-template').is_visible()
- page.screenshot(path='/mnt/data/photobooth-pilih-template.png',full_page=True)
+ page.screenshot(path=OUT/'photobooth-pilih-template.png',full_page=True)
  page.locator('.template-card[data-template="rusa"]').click()
  page.click('#template-next')
  page.wait_for_function('document.querySelector("#camera-video").readyState >= 2',timeout=20000)
@@ -62,7 +63,7 @@ with sync_playwright() as p:
      if i < 2:page.wait_for_function(f'document.querySelectorAll("#shot-slots img").length >= {i+1}',timeout=12000)
      else:page.wait_for_function('!document.querySelector("#pane-review").hidden',timeout=12000)
  print('review visible',page.locator('#pane-review').is_visible())
- page.screenshot(path='/mnt/data/photobooth-review.png',full_page=True)
+ page.screenshot(path=OUT/'photobooth-review.png',full_page=True)
  # retake second photo:
  page.locator('.retake').nth(1).click()
  page.wait_for_function('!document.querySelector("#pane-camera").hidden')
@@ -71,7 +72,7 @@ with sync_playwright() as p:
  page.click('#confirm-button')
  page.wait_for_function('!document.querySelector("#pane-result").hidden',timeout=40000)
  print('result visible',page.locator('#pane-result').is_visible(),'blob bytes',page.evaluate('window.submittedBlobSize'))
- page.screenshot(path='/mnt/data/photobooth-selesai.png',full_page=True)
+ page.screenshot(path=OUT/'photobooth-selesai.png',full_page=True)
  print('JS page errors',errors)
  assert not errors
  browser.close()

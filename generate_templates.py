@@ -131,7 +131,7 @@ for tid, (fn, title, desc, slots) in PROCESSORS.items():
     # Generate clean preview thumbnail
     thumb = Image.new('RGBA', im.size, '#f0f3fa')
     thumb.alpha_composite(im)
-    thumb.thumbnail((270, 480), Image.Resampling.LANCZOS)
+    thumb.thumbnail((540, 960), Image.Resampling.LANCZOS)
     thumb.convert('RGB').save(OUT / f'{tid}-preview.jpg', quality=88, optimize=True)
     
     configs.append(dict(
