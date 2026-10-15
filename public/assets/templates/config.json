@@ -1,0 +1,130 @@
+[
+  {
+    "id": "decade",
+    "title": "Kamen Rider Decade",
+    "desc": "Magenta · Black · Tech",
+    "slots": [
+      {
+        "x": 242,
+        "y": 310,
+        "w": 648,
+        "h": 348,
+        "r": 0
+      },
+      {
+        "x": 54,
+        "y": 730,
+        "w": 642,
+        "h": 348,
+        "r": 0
+      },
+      {
+        "x": 254,
+        "y": 1145,
+        "w": 640,
+        "h": 352,
+        "r": 0
+      }
+    ],
+    "artWidth": 941,
+    "artHeight": 1672,
+    "asset": "/assets/templates/decade.png",
+    "preview": "/assets/templates/decade-preview.jpg"
+  },
+  {
+    "id": "pink",
+    "title": "Pink Kawaii",
+    "desc": "Pink · Cute · Bear",
+    "slots": [
+      {
+        "x": 250,
+        "y": 300,
+        "w": 585,
+        "h": 315,
+        "r": 0
+      },
+      {
+        "x": 110,
+        "y": 690,
+        "w": 595,
+        "h": 325,
+        "r": 0
+      },
+      {
+        "x": 250,
+        "y": 1100,
+        "w": 585,
+        "h": 330,
+        "r": 0
+      }
+    ],
+    "artWidth": 941,
+    "artHeight": 1672,
+    "asset": "/assets/templates/pink.png",
+    "preview": "/assets/templates/pink-preview.jpg"
+  },
+  {
+    "id": "sea",
+    "title": "Sea Friends",
+    "desc": "Blue · Ocean · Chibi",
+    "slots": [
+      {
+        "x": 250,
+        "y": 175,
+        "w": 565,
+        "h": 360,
+        "r": 0
+      },
+      {
+        "x": 120,
+        "y": 645,
+        "w": 575,
+        "h": 360,
+        "r": 0
+      },
+      {
+        "x": 250,
+        "y": 1095,
+        "w": 565,
+        "h": 345,
+        "r": 0
+      }
+    ],
+    "artWidth": 941,
+    "artHeight": 1672,
+    "asset": "/assets/templates/sea.png",
+    "preview": "/assets/templates/sea-preview.jpg"
+  },
+  {
+    "id": "rusa",
+    "title": "Rusa Unila",
+    "desc": "Green · Campus · Mascot",
+    "slots": [
+      {
+        "x": 255,
+        "y": 282,
+        "w": 540,
+        "h": 388,
+        "r": 0
+      },
+      {
+        "x": 148,
+        "y": 705,
+        "w": 540,
+        "h": 388,
+        "r": 0
+      },
+      {
+        "x": 255,
+        "y": 1124,
+        "w": 540,
+        "h": 388,
+        "r": 0
+      }
+    ],
+    "artWidth": 941,
+    "artHeight": 1672,
+    "asset": "/assets/templates/rusa.png",
+    "preview": "/assets/templates/rusa-preview.jpg"
+  }
+]
