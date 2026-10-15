@@ -18,7 +18,7 @@ Website photobooth siap dijalankan untuk acara Dies Natalis Teknik Unila. Dibuat
 1. Instal [Python 3.11+](https://www.python.org/downloads/) dan centang **Add Python to PATH** saat instalasi.
 2. Ekstrak ZIP proyek ini ke folder yang tidak memiliki pembatasan akses.
 3. Klik dua kali **`start-windows.bat`**. Saat dijalankan pertama kali, script akan membuat lingkungan Python lokal (`.venv`) dan memasang dependensi (memerlukan koneksi internet saat instalasi awal).
-4. Setelah muncul `Uvicorn running on http://0.0.0.0:8000`, buka browser Chrome atau Edge pada **`http://localhost:8000`** di komputer photobooth.
+4. Setelah muncul `Uvicorn running on http://0.0.0.0:8800`, buka browser Chrome atau Edge pada **`http://localhost:8800`** di komputer photobooth.
 5. Izinkan akses kamera. Jangan tutup jendela terminal selama acara.
 
 Jika file BAT gagal, jalankan manual menggunakan PowerShell di folder proyek:
@@ -26,7 +26,7 @@ Jika file BAT gagal, jalankan manual menggunakan PowerShell di folder proyek:
 ```powershell
 py -3 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\python.exe -m uvicorn server:app --host 0.0.0.0 --port 8000
+.venv\Scripts\python.exe -m uvicorn server:app --host 0.0.0.0 --port 8800
 ```
 
 Linux/macOS:
@@ -35,21 +35,21 @@ Linux/macOS:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn server:app --host 0.0.0.0 --port 8000
+python -m uvicorn server:app --host 0.0.0.0 --port 8800
 ```
 
 ## Penting: cara agar QR bisa dibuka peserta
 
-**Jika kiosk berjalan di `http://localhost:8000`**, QR yang mengarah ke `localhost` **tidak akan bekerja di HP peserta**, karena `localhost` di HP berarti HP itu sendiri.
+**Jika kiosk berjalan di `http://localhost:8800`**, QR yang mengarah ke `localhost` **tidak akan bekerja di HP peserta**, karena `localhost` di HP berarti HP itu sendiri.
 
-**Pilihan A — Jaringan Wi-Fi acara (tanpa domain):** Pastikan PC photobooth dan HP peserta berada pada jaringan yang sama, PC dan browser diizinkan lewat firewall, dan mengetahui alamat IP lokal PC, misalnya `192.168.1.25`. Saat menjalankan server, atur `PUBLIC_BASE_URL=http://192.168.1.25:8000`:
+**Pilihan A — Jaringan Wi-Fi acara (tanpa domain):** Pastikan PC photobooth dan HP peserta berada pada jaringan yang sama, PC dan browser diizinkan lewat firewall, dan mengetahui alamat IP lokal PC, misalnya `192.168.1.25`. Saat menjalankan server, atur `PUBLIC_BASE_URL=http://192.168.1.25:8800`:
 
 ```powershell
-$env:PUBLIC_BASE_URL = 'http://192.168.1.25:8000'
-.venv\Scripts\python.exe -m uvicorn server:app --host 0.0.0.0 --port 8000
+$env:PUBLIC_BASE_URL = 'http://192.168.1.25:8800'
+.venv\Scripts\python.exe -m uvicorn server:app --host 0.0.0.0 --port 8800
 ```
 
-Buka photobooth melalui **`http://localhost:8000`** di PC agar izin kamera berfungsi. QR nantinya menunjuk ke IP jaringan yang dapat diakses HP. Di jaringan kampus, *client isolation* dan firewall mungkin perlu diatur; HTTP lokal tidak ideal untuk distribusi data pribadi di jaringan publik.
+Buka photobooth melalui **`http://localhost:8800`** di PC agar izin kamera berfungsi. QR nantinya menunjuk ke IP jaringan yang dapat diakses HP. Di jaringan kampus, *client isolation* dan firewall mungkin perlu diatur; HTTP lokal tidak ideal untuk distribusi data pribadi di jaringan publik.
 
 **Pilihan B — Hosting publik:** Deploy website di server dengan **domain HTTPS** dan penyimpanan persisten, lalu atur `PUBLIC_BASE_URL=https://domain-kamu.example`. Solusi ini paling sesuai bila QR harus dibuka di mana pun dan link WhatsApp harus dapat digunakan di luar Wi-Fi acara. Kamera pada browser membutuhkan **HTTPS atau localhost**, bukan alamat HTTP IP biasa.
 

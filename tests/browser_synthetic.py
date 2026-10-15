@@ -58,10 +58,10 @@ with sync_playwright() as p:
  page.click('#template-next')
  page.wait_for_function('document.querySelector("#camera-video").readyState >= 2',timeout=20000)
  print('camera video state:',page.locator('#camera-video').evaluate('(el)=>el.readyState'))
- for i in range(3):
-     page.click('#capture-button')
-     if i < 2:page.wait_for_function(f'document.querySelectorAll("#shot-slots img").length >= {i+1}',timeout=12000)
-     else:page.wait_for_function('!document.querySelector("#pane-review").hidden',timeout=12000)
+ # one press shoots all three photos automatically
+ page.click('#capture-button')
+ page.wait_for_function('!document.querySelector("#pane-review").hidden',timeout=20000)
+ assert page.evaluate('state.photos.every(Boolean)')
  print('review visible',page.locator('#pane-review').is_visible())
  page.screenshot(path=OUT/'photobooth-review.png',full_page=True)
  # retake second photo:

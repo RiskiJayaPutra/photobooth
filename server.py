@@ -1,6 +1,6 @@
 """Labkom Photobooth — local FastAPI server.
 
-Run: python -m uvicorn server:app --reload --port 8000
+Run: python -m uvicorn server:app --reload --port 8800
 Deploy with PUBLIC_BASE_URL=https://photobooth.example.com.
 """
 from __future__ import annotations
@@ -129,14 +129,22 @@ def tidy_old_results() -> None:
     delete_entries(expired)
 
 
+def versioned(url: str) -> str:
+    # Cloudflare caches /assets for hours; a ?v=<mtime> query makes every changed file a new URL.
+    return f"{url}?v={int((PUBLIC / url.lstrip('/')).stat().st_mtime)}"
+
+
 @app.get('/')
 def homepage():
-    return FileResponse(PUBLIC / 'index.html', headers={'Cache-Control': 'no-cache'})
+    html = (PUBLIC / 'index.html').read_text(encoding='utf-8')
+    for url in ('/assets/style.css', '/assets/app.js'):
+        html = html.replace(f'"{url}"', f'"{versioned(url)}"')
+    return HTMLResponse(html, headers={'Cache-Control': 'no-cache'})
 
 
 @app.get('/api/templates')
 def get_templates():
-    return TEMPLATES
+    return [{**t, 'asset': versioned(t['asset']), 'preview': versioned(t['preview'])} for t in TEMPLATES]
 
 
 @app.post('/api/results')
@@ -210,9 +218,11 @@ async def create_result(
 
 
 @app.get('/files/{key}.jpg')
-def photo_image(key: str):
+def photo_image(key: str, dl: bool = False):
     get_entry(key)
+    # ?dl=1 sends Content-Disposition: attachment so phones (iOS Safari) save instead of only previewing.
     return FileResponse(FILES / f'{key}.jpg', media_type='image/jpeg',
+                        filename='photobooth-unila-2026.jpg' if dl else None,
                         headers={'Cache-Control': 'private, max-age=3600', 'X-Robots-Tag': 'noindex'})
 
 
@@ -266,9 +276,9 @@ p{{margin:0}}.muted{{color:#B3BDE6;font-size:14px}}.fine{{color:#8591C4;font-siz
 <h1>Ini fotomu dari photobooth Labkom</h1>
 <div class="print"><img src="{path}" alt="Foto photobooth Dies Natalis Teknik Unila 2026" width="1080" height="1920"/></div>
 <div class="actions">
-<a class="btn primary" href="{path}" download="photobooth-unila-2026.jpg"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Unduh foto HD</a>
+<a class="btn primary" href="{path}?dl=1" download="photobooth-unila-2026.jpg"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Unduh foto HD</a>
 <button class="btn" id="share" type="button" hidden><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M5 13v7h14v-7"/></svg>Bagikan link</button>
-<p class="muted">Di iPhone, jika foto terbuka di tab baru: tekan lama foto, lalu pilih Simpan ke Foto.</p>
+<p class="muted">Di iPhone, hasil unduhan masuk ke app File. Agar langsung masuk galeri, tekan lama foto di atas lalu pilih Simpan ke Foto.</p>
 </div>
 <p class="fine">Link ini berlaku sampai {expires_text}. Setelah itu foto dihapus otomatis dari server.</p>
 </main>
@@ -287,4 +297,4 @@ def health():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=8800)

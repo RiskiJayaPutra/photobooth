@@ -39,14 +39,16 @@ def run():
                 content,_=fetch('/health');break
             except Exception:time.sleep(.25)
         else:raise AssertionError('server startup failed')
-        assert json.loads(content)['templates']==4
-        config=json.loads(fetch('/api/templates')[0]);assert len(config)==4
+        assert json.loads(content)['templates']==6
+        config=json.loads(fetch('/api/templates')[0]);assert len(config)==6
+        home=fetch('/')[0].decode();assert '/assets/app.js?v=' in home and '/assets/style.css?v=' in home
+        assert all('?v=' in t['asset'] for t in config)
         assert all(len(t['slots'])==3 for t in config)
         for item in config:
             raw,_=fetch(item['asset'])
             art=Image.open(io.BytesIO(raw));assert art.mode=='RGBA'
             assert art.getextrema()[3][0] == 0 and art.getextrema()[3][1] == 255
-        print('[OK] server, 4 template, 3 true-alpha photo holes')
+        print('[OK] server, 6 templates, 3 true-alpha photo holes, versioned asset URLs')
         image=Image.new('RGB',(1200,1600),(34,100,175));d=ImageDraw.Draw(image)
         for i in range(20):d.rectangle((i*28,i*35,i*28+40,i*35+100),fill=(i*10%255,90,i*18%255))
         b=io.BytesIO();image.save(b,'JPEG',quality=92)

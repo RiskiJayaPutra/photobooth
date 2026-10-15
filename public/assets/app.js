@@ -6,9 +6,21 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 const MAX_OUTPUT_SIZE = 20 * 1024 * 1024;
 const SESSION_SECONDS = 120;
 const SHOT_COUNTDOWN = 5;
+const SHOT_PREVIEW_MS = 1000; // quick look at each photo before the next automatic countdown
 const FINAL_SIZE = { width: 2160, height: 3840 };
 const RESULT_IDLE_SECONDS = 120; // result screen returns to start so the next visitor never sees the previous photo
 const SLOT_NAMES = ['atas', 'tengah', 'bawah'];
+const FILTERS = [
+  { id: 'normal', label: 'Normal', css: 'none' },
+  { id: 'lembut', label: 'Lembut', css: 'blur({blur}) brightness(1.08) saturate(1.1) contrast(.95)' }, // soft-focus, blur scales with output size
+  { id: 'cerah', label: 'Cerah', css: 'brightness(1.08) contrast(1.06) saturate(1.2)' },
+  { id: 'hangat', label: 'Hangat', css: 'sepia(.22) saturate(1.25) hue-rotate(-8deg) brightness(1.04)' },
+  { id: 'vintage', label: 'Vintage', css: 'sepia(.5) contrast(.92) brightness(1.05) saturate(.85)' },
+  { id: 'bw', label: 'Hitam putih', css: 'grayscale(1) contrast(1.12)' },
+];
+const EMOJIS = ['😎', '🥳', '😍', '🤩', '😂', '🔥', '✨', '💖', '👑', '🎓', '🎉', '🦌'];
+const MAX_STICKERS = 12;
+const EMOJI_FONT = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
 
 const state = {
   profile: null,
@@ -30,9 +42,14 @@ const state = {
   idleEndsAt: 0,
   idleTimer: null,
   frameArmTimer: null,
+  filter: 'normal',
+  stickers: [], // { emoji, x, y, size } as fractions of the poster width/height
+  selectedSticker: -1,
 };
 let toastTimer;
 let countdownAbort = false;
+let stopRequested = false;
+let audioCtx = null;
 
 function toast(message, tone = 'info') {
   const element = $('#toast');
@@ -52,7 +69,41 @@ function sessionExpired() { return state.endsAt > 0 && timeRemaining() <= 0; }
 function allPhotosReady() { return state.photos.every(Boolean); }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function nextFrame() { return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))); }
+function clamp(value, min = 0, max = 1) { return Math.min(max, Math.max(min, value)); }
 function icon(id) { return `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`; }
+function filterCss(f, blurPx) { return f.css.replace('{blur}', `${blurPx.toFixed(2)}px`); }
+
+/* ---------- Countdown sound (WebAudio, no files) ---------- */
+function unlockAudio() {
+  // Browsers only allow audio after a user gesture, so this runs from the shutter click.
+  try {
+    audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch { audioCtx = null; }
+}
+function soundOn() { return audioCtx && $('#sound-toggle').checked; }
+function beep(final) {
+  if (!soundOn()) return;
+  const t = audioCtx.currentTime, osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = final ? 1320 : 880;
+  gain.gain.setValueAtTime(.0001, t);
+  gain.gain.exponentialRampToValueAtTime(.3, t + .01);
+  gain.gain.exponentialRampToValueAtTime(.0001, t + (final ? .35 : .15));
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + .4);
+}
+function shutterSound() {
+  if (!soundOn()) return;
+  const length = Math.floor(audioCtx.sampleRate * .12);
+  const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate), data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 3;
+  const source = audioCtx.createBufferSource(), gain = audioCtx.createGain();
+  gain.gain.value = .5;
+  source.buffer = buffer;
+  source.connect(gain).connect(audioCtx.destination);
+  source.start();
+}
 
 function showStep(name) {
   state.step = name;
@@ -96,6 +147,7 @@ async function loadTemplates() {
     throw e;
   }
   container.dataset.state = 'ready';
+  container.style.setProperty('--count', state.templates.length);
   container.replaceChildren();
   for (const template of state.templates) {
     const card = document.createElement('button');
@@ -298,16 +350,22 @@ function updateCaptureHeading() {
   const number = state.currentShot + 1;
   const expired = sessionExpired();
   $('#capture-title').textContent = state.retaking ? `Ulangi foto ${number}` : `Foto ${number} dari 3`;
-  $('#capture-label').textContent = expired ? 'Waktu habis' : state.retaking ? `Ulangi foto ${number}` : `Ambil foto ${number}`;
+  const taken = state.photos.filter(Boolean).length;
+  let label = taken ? `Lanjutkan foto ${number}` : 'Mulai foto';
+  if (state.retaking) label = `Ulangi foto ${number}`;
+  if (expired) label = 'Waktu habis';
+  if (state.countingDown) label = 'Berhenti';
+  $('#capture-label').textContent = label;
+  $('#capture-button').classList.toggle('is-stop', state.countingDown);
   $('#hud-shot').textContent = `Foto ${number}, jendela ${SLOT_NAMES[state.currentShot]}`;
-  $('#capture-button').disabled = expired || state.countingDown || timeRemaining() < 6 || !state.videoStream;
+  $('#capture-button').disabled = expired || (!state.countingDown && (timeRemaining() < 6 || !state.videoStream));
   const reviewButton = $('#review-button');
   reviewButton.hidden = !(allPhotosReady() && !state.countingDown);
   reviewButton.querySelector('span').textContent = state.retaking && !expired ? 'Batal ulangi' : 'Lihat hasil';
   $('#restart-button').hidden = !(expired && !allPhotosReady());
   $('#change-frame').hidden = state.countingDown;
-  let status = 'Posisikan wajah di area terang, lalu tekan Ambil foto.';
-  if (state.countingDown) status = 'Tahan pose… kamera memotret saat hitungan habis.';
+  let status = taken ? `Tekan Lanjutkan untuk memotret foto ${number} sampai 3.` : 'Tekan Mulai foto sekali. Kamera memotret 3 kali otomatis, hitung mundur 5 detik tiap foto.';
+  if (state.countingDown) status = `Foto ${number} dari 3, tahan pose… Tekan Berhenti untuk jeda.`;
   else if (expired) status = allPhotosReady() ? 'Waktu habis. Lanjutkan ke hasil untuk menyimpan foto.' : 'Waktu habis sebelum 3 foto selesai. Tekan Ulang sesi untuk mencoba lagi.';
   else if (state.retaking) status = `Foto ${number} akan diganti. Foto lain tidak berubah.`;
   $('#camera-status').textContent = status;
@@ -324,6 +382,7 @@ async function createNewSession() {
   state.currentShot = 0;
   state.retaking = false;
   state.countingDown = false;
+  resetEdits();
   showStep('camera');
   setCameraMessage('Menyiapkan frame…');
   renderTimer(SESSION_SECONDS);
@@ -357,41 +416,66 @@ function captureVideoFrame() {
 function restartAnimation(element, className) {
   element.classList.remove(className); void element.offsetWidth; element.classList.add(className);
 }
+// One press shoots every missing photo in a row (countdown → capture → quick look → next).
+// While it runs the shutter button is a stop button; a retake shoots just that one photo.
 async function countdownAndShoot() {
-  if (state.countingDown || timeRemaining() < SHOT_COUNTDOWN + .6 || !state.videoStream) {
+  if (state.countingDown) { stopRequested = true; countdownAbort = true; return; }
+  if (timeRemaining() < SHOT_COUNTDOWN + .6 || !state.videoStream) {
     toast('Waktu tidak cukup atau kamera belum siap.', 'error'); return;
   }
+  unlockAudio();
   state.countingDown = true;
   countdownAbort = false;
-  updateCaptureHeading();
+  stopRequested = false;
   const display = $('#countdown');
+  const cancelled = () => new Error(stopRequested
+    ? 'Foto otomatis dihentikan. Foto yang sudah diambil tetap tersimpan.'
+    : timeRemaining() <= 0 ? 'Waktu sesi sudah habis.' : 'Hitung mundur dibatalkan.');
   try {
-    for (let sec = SHOT_COUNTDOWN; sec > 0; sec--) {
-      if (countdownAbort || timeRemaining() <= 0) throw new Error('Countdown dibatalkan.');
-      display.hidden = false;
-      $('#countdown-num').textContent = sec;
-      restartAnimation(display, 'tick');
-      await sleep(1000);
-    }
-    if (countdownAbort || timeRemaining() <= 0) throw new Error('Waktu sesi sudah habis.');
-    display.hidden = true;
-    const shot = state.currentShot;
-    state.photos[shot] = captureVideoFrame();
-    restartAnimation($('#flash'), 'go');
-    await sleep(450);
-    if (state.retaking || allPhotosReady()) {
-      state.retaking = false;
-      await showReview();
-    } else {
+    for (;;) {
+      if (timeRemaining() < SHOT_COUNTDOWN + .6) throw new Error('Waktu sesi tidak cukup untuk foto berikutnya.');
+      updateCaptureHeading();
+      for (let sec = SHOT_COUNTDOWN; sec > 0; sec--) {
+        if (countdownAbort || timeRemaining() <= 0) throw cancelled();
+        display.hidden = false;
+        $('#countdown-num').textContent = sec;
+        restartAnimation(display, 'tick');
+        beep(sec === 1);
+        await sleep(1000);
+      }
+      if (countdownAbort || timeRemaining() <= 0) throw cancelled();
+      display.hidden = true;
+      const shot = state.currentShot;
+      state.photos[shot] = captureVideoFrame();
+      shutterSound();
+      restartAnimation($('#flash'), 'go');
+      if (state.retaking || allPhotosReady()) break;
       state.currentShot = state.photos.findIndex(photo => !photo);
-      toast(`Foto ${shot + 1} tersimpan. Siap untuk foto ${state.currentShot + 1}.`, 'success');
+      await showShotPreview(shot);
+      if (countdownAbort) throw cancelled();
     }
-  } catch(e) { toast(e.message, 'error'); }
+    await sleep(450);
+    state.retaking = false;
+    await showReview();
+  } catch(e) { toast(e.message, stopRequested ? 'info' : 'error'); }
   finally {
     display.hidden = true;
+    $('#shot-preview').hidden = true;
     state.countingDown = false;
+    stopRequested = false;
     if (state.step === 'camera') updateCaptureHeading();
   }
+}
+async function showShotPreview(shot) {
+  const box = $('#shot-preview');
+  box.querySelector('img').src = state.photos[shot];
+  box.querySelector('span').textContent = `Foto ${shot + 1} tersimpan`;
+  box.hidden = false;
+  restartAnimation(box, 'show');
+  updateCaptureHeading();
+  $('#camera-status').textContent = `Foto ${shot + 1} tersimpan. Bersiap untuk foto ${state.currentShot + 1}…`;
+  await sleep(SHOT_PREVIEW_MS);
+  box.hidden = true;
 }
 function changeFrame(event) {
   const button = event.currentTarget;
@@ -420,7 +504,7 @@ function disarmChangeFrame() {
 }
 
 /* ---------- Compositing ---------- */
-function drawImageCover(ctx, img, box) {
+function drawImageCover(ctx, img, box, filter = 'none') {
   const { x, y, w, h, r } = box;
   const frameAspect = w / h;
   const sourceAspect = img.naturalWidth / img.naturalHeight;
@@ -431,10 +515,11 @@ function drawImageCover(ctx, img, box) {
   if (r && typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, r);
   else ctx.rect(x, y, w, h);
   ctx.clip();
+  if (filter !== 'none') ctx.filter = filter;
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
   ctx.restore();
 }
-async function renderPoster(width, height) {
+async function renderPoster(width, height, { stickers = true } = {}) {
   if (!allPhotosReady()) throw new Error('Ketiga foto harus diambil terlebih dahulu.');
   const template = state.template;
   const art = state.templateImage || await loadImage(template.asset);
@@ -445,13 +530,21 @@ async function renderPoster(width, height) {
   const sx = width / template.artWidth, sy = height / template.artHeight;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;ctx.imageSmoothingQuality = 'high';
+  const filter = filterCss(FILTERS.find(f => f.id === state.filter) || FILTERS[0], width * .0008);
   template.slots.forEach((slot, index) => {
     drawImageCover(ctx, imgs[index], {
       x: slot.x * sx, y: slot.y * sy,
       w: slot.w * sx, h: slot.h * sy, r: slot.r * (sx + sy) / 2,
-    });
+    }, filter);
   });
+  // The frame casts a soft shadow into each window, so photos sit inside the art instead of looking pasted on.
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, .42)';
+  ctx.shadowBlur = 6 * (sx + sy);
+  ctx.shadowOffsetY = 2 * sy;
   ctx.drawImage(art, 0, 0, width, height);
+  ctx.restore();
+  if (stickers) drawStickers(ctx, width, height);
   return canvas;
 }
 
@@ -492,12 +585,131 @@ async function showReview() {
     reviewList.append(item);
   }
   $('#review-expired').hidden = canRetake;
+  selectReviewTab('shots');
+  renderFilterGrid();
+  renderStickers();
   const canvas = $('#preview-canvas');
   canvas.width = 720;
   canvas.height = Math.round(720 * template.artHeight / template.artWidth);
-  const composite = await renderPoster(canvas.width, canvas.height);
-  canvas.getContext('2d').drawImage(composite, 0, 0);
+  await renderPreview();
   onTimerTick();
+}
+async function renderPreview() {
+  const canvas = $('#preview-canvas');
+  const token = ++state.liveDraw;
+  const composite = await renderPoster(canvas.width, canvas.height, { stickers: false }); // stickers are DOM while editing
+  if (token === state.liveDraw) canvas.getContext('2d').drawImage(composite, 0, 0);
+}
+
+/* ---------- Filters & stickers ---------- */
+function selectReviewTab(name) {
+  $$('.review-tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
+  $$('.review-panel').forEach(panel => panel.hidden = panel.dataset.panel !== name);
+}
+function renderFilterGrid() {
+  $('#filter-grid').replaceChildren(...FILTERS.map(f => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'filter-chip';
+    button.setAttribute('aria-pressed', String(f.id === state.filter));
+    const img = new Image(); img.src = state.photos[0]; img.alt = ''; img.style.filter = filterCss(f, .4);
+    const label = document.createElement('span'); label.textContent = f.label;
+    button.append(img, label);
+    button.addEventListener('click', () => { state.filter = f.id; renderFilterGrid(); renderPreview(); });
+    return button;
+  }));
+}
+function drawStickers(ctx, width, height) {
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const s of state.stickers) {
+    ctx.font = `${Math.round(s.size * width)}px ${EMOJI_FONT}`;
+    ctx.fillText(s.emoji, s.x * width, s.y * height);
+  }
+  ctx.restore();
+}
+function addSticker(emoji) {
+  if (state.stickers.length >= MAX_STICKERS) { toast(`Maksimal ${MAX_STICKERS} stiker. Hapus salah satu dulu.`, 'error'); return; }
+  const n = state.stickers.length;
+  state.stickers.push({ emoji, x: .5 + (n % 3 - 1) * .12, y: .5 + (Math.floor(n / 3) % 3 - 1) * .1, size: .14 });
+  state.selectedSticker = state.stickers.length - 1;
+  renderStickers();
+}
+function selectSticker(index) {
+  state.selectedSticker = index;
+  $$('#sticker-layer .sticker').forEach((el, i) => el.classList.toggle('selected', i === index));
+  const s = state.stickers[index];
+  ['#sticker-smaller', '#sticker-bigger', '#sticker-delete'].forEach(id => $(id).disabled = !s);
+  $('#sticker-tools-label').textContent = s ? `Stiker ${s.emoji} dipilih` : 'Pilih stiker di foto untuk mengubahnya';
+  placeStickerX();
+}
+function placeStickerX() {
+  // Quick-delete handle at the selected sticker's top-right corner.
+  const s = state.stickers[state.selectedSticker], x = $('#sticker-x');
+  x.hidden = !s;
+  if (!s) return;
+  const layer = $('#sticker-layer'), half = s.size * layer.clientWidth * .55;
+  x.style.left = `${s.x * layer.clientWidth + half}px`;
+  x.style.top = `${s.y * layer.clientHeight - half}px`;
+}
+function placeSticker(el, s) {
+  el.style.left = `${s.x * 100}%`;
+  el.style.top = `${s.y * 100}%`;
+  el.style.setProperty('--size', s.size);
+  if (s === state.stickers[state.selectedSticker]) placeStickerX();
+}
+function renderStickers() {
+  $('#sticker-layer').replaceChildren(...state.stickers.map((s, i) => {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'sticker';
+    el.textContent = s.emoji;
+    el.setAttribute('aria-label', `Stiker ${s.emoji}. Geser atau pakai tombol panah untuk memindahkan.`);
+    placeSticker(el, s);
+    el.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      selectSticker(i);
+      selectReviewTab('sticker');
+      el.setPointerCapture(event.pointerId);
+      const rect = $('#sticker-layer').getBoundingClientRect();
+      const move = ev => {
+        s.x = clamp((ev.clientX - rect.left) / rect.width);
+        s.y = clamp((ev.clientY - rect.top) / rect.height);
+        placeSticker(el, s);
+      };
+      const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+    });
+    el.addEventListener('keydown', event => {
+      const step = { ArrowLeft: [-.01, 0], ArrowRight: [.01, 0], ArrowUp: [0, -.01], ArrowDown: [0, .01] }[event.key];
+      if (step) { event.preventDefault(); s.x = clamp(s.x + step[0]); s.y = clamp(s.y + step[1]); placeSticker(el, s); }
+      if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); selectSticker(i); deleteSticker(); }
+    });
+    el.addEventListener('focus', () => selectSticker(i));
+    return el;
+  }));
+  selectSticker(state.selectedSticker < state.stickers.length ? state.selectedSticker : -1);
+  $('#sticker-count').textContent = state.stickers.length;
+  $('#sticker-count').hidden = !state.stickers.length;
+}
+function resizeSticker(factor) {
+  const s = state.stickers[state.selectedSticker];
+  if (!s) return;
+  s.size = clamp(s.size * factor, .06, .4);
+  placeSticker($$('#sticker-layer .sticker')[state.selectedSticker], s);
+}
+function deleteSticker() {
+  if (state.selectedSticker < 0) return;
+  state.stickers.splice(state.selectedSticker, 1);
+  state.selectedSticker = -1;
+  renderStickers();
+}
+function resetEdits() {
+  state.filter = 'normal';
+  state.stickers = [];
+  state.selectedSticker = -1;
 }
 
 /* ---------- Save & upload ---------- */
@@ -590,6 +802,7 @@ function resetAll() {
   stopCamera();clearInterval(state.interval);
   state.profile = null; state.template = null; state.templateImage = null; state.artPromise = null;
   state.photos = [null, null, null]; state.endsAt = 0; state.result = null;
+  resetEdits();
   $('#registration-form').reset();
   $$('.field input').forEach(input => setFieldError(input, ''));
   $('#template-next').disabled = true;
@@ -649,6 +862,22 @@ function setupEvents() {
   $('#camera-back').addEventListener('click', changeFrame);
   $('#change-frame').addEventListener('click', changeFrame);
   $('#confirm-button').addEventListener('click', confirmResult);
+  $$('.review-tab').forEach(tab => tab.addEventListener('click', () => selectReviewTab(tab.dataset.tab)));
+  $('#emoji-grid').replaceChildren(...EMOJIS.map(emoji => {
+    const button = Object.assign(document.createElement('button'), { type: 'button', className: 'emoji-btn', textContent: emoji });
+    button.setAttribute('aria-label', `Tempel stiker ${emoji}`);
+    button.addEventListener('click', () => addSticker(emoji));
+    return button;
+  }));
+  $('#sticker-smaller').addEventListener('click', () => resizeSticker(.8));
+  $('#sticker-bigger').addEventListener('click', () => resizeSticker(1.25));
+  $('#sticker-delete').addEventListener('click', deleteSticker);
+  $('#sticker-x').addEventListener('click', deleteSticker);
+  try { $('#sound-toggle').checked = localStorage.getItem('photobooth-sound') !== 'off'; } catch {}
+  $('#sound-toggle').addEventListener('change', e => {
+    try { localStorage.setItem('photobooth-sound', e.target.checked ? 'on' : 'off'); } catch {}
+    if (e.target.checked) { unlockAudio(); beep(false); }
+  });
   $('#upload-retry').addEventListener('click', confirmResult);
   $('#upload-cancel').addEventListener('click', () => { $('#upload-overlay').hidden = true; });
   $('#copy-link').addEventListener('click', async () => {

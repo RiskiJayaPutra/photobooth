@@ -100,7 +100,8 @@ img, canvas, video { display: block; }
 }
 .btn:active:not(:disabled) { transform: scale(.97); }
 .btn:disabled { opacity: .38; cursor: not-allowed; }
-.btn:focus-visible, .shutter:focus-visible, .template-card:focus-visible, .switch input:focus-visible + .switch-track {
+.btn:focus-visible, .shutter:focus-visible, .template-card:focus-visible, .switch input:focus-visible + .switch-track,
+.review-tab:focus-visible, .filter-chip:focus-visible, .emoji-btn:focus-visible, .sticker:focus-visible {
   outline: 3px solid #fff; outline-offset: 3px;
 }
 .btn-primary { background: var(--cyan); color: var(--cyan-ink); box-shadow: 0 10px 30px -12px rgba(92, 184, 215, .7); }
@@ -197,13 +198,14 @@ img, canvas, video { display: block; }
 .bar-actions { display: flex; gap: 12px; align-items: center; }
 
 .template-grid {
-  --gap: clamp(16px, 2.2vw, 40px);
+  --gap: clamp(14px, 1.8vw, 32px);
+  --count: 6;
   flex: 1; min-height: 0;
   container-type: size;
   display: flex; gap: var(--gap); justify-content: center; align-items: flex-start;
 }
 .template-card, .template-skeleton {
-  --poster-h: min(calc(100cqh - 84px), calc((100cqw - 3 * var(--gap)) / 4 * 959 / 540));
+  --poster-h: min(calc(100cqh - 84px), calc((100cqw - (var(--count) - 1) * var(--gap)) / var(--count) * 959 / 540));
 }
 .template-card {
   display: flex; flex-direction: column; gap: 12px;
@@ -319,6 +321,7 @@ body.counting .rec { animation: blink 1s steps(2) infinite; }
 
 .cam-controls { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
 .cam-aside-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.cam-toggles { display: flex; flex-wrap: wrap; gap: 10px 22px; justify-self: start; }
 
 .switch { display: inline-flex; align-items: center; gap: 12px; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--text-2); justify-self: start; }
 .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -341,6 +344,15 @@ body.counting .rec { animation: blink 1s steps(2) infinite; }
 .shutter:hover:not(:disabled) .shutter-ring { transform: scale(1.06); }
 .shutter:active:not(:disabled) { transform: scale(.96); }
 .shutter:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.shutter.is-stop .shutter-ring { border-radius: 16px; transform: scale(.72); box-shadow: inset 0 0 0 0 var(--paper), 0 0 0 0 var(--rec); }
+
+.shot-preview {
+  position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; gap: 14px; align-content: center;
+  background: rgba(8, 13, 38, .72); pointer-events: none;
+}
+.shot-preview img { width: 46%; aspect-ratio: 4 / 3; object-fit: cover; border: 8px solid var(--paper); border-radius: 10px; box-shadow: 0 30px 60px -20px #000; }
+.shot-preview span { font: 800 clamp(22px, 2vw, 30px) var(--font-display); }
+.shot-preview.show img { animation: print-in .45s var(--ease-out); }
 
 .cam-rail { display: flex; flex-direction: column; gap: clamp(12px, 2vh, 20px); min-height: 0; }
 .timer {
@@ -428,6 +440,68 @@ body.counting .rec { animation: blink 1s steps(2) infinite; }
 .upload-error p { color: #FFB3BA; font-weight: 600; }
 .upload-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 
+.review-tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px;
+  border-radius: 999px; background: var(--navy-950); box-shadow: inset 0 0 0 1px var(--line);
+}
+.review-tab {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px; border: 0; border-radius: 999px; background: none; cursor: pointer;
+  color: var(--text-2); font: 700 16px var(--font-body);
+  transition: background-color .2s, color .2s, box-shadow .2s;
+}
+.review-tab[aria-selected="true"] { background: var(--navy-700); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--cyan); }
+.review-tab:hover:not([aria-selected="true"]) { color: var(--text); background: rgba(160, 180, 255, .07); }
+.review-tab .ico { width: 20px; height: 20px; }
+.tab-count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--cyan); color: var(--cyan-ink); font-size: 13px; font-weight: 800; display: inline-grid; place-items: center; }
+.review-panel { display: grid; gap: 14px; animation: pane-in .25s var(--ease-out); }
+
+.filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.filter-chip {
+  display: grid; gap: 8px; padding: 8px; border: 0; border-radius: 16px; cursor: pointer;
+  background: var(--navy-800); box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text-2); font: 600 15px var(--font-body); text-align: center;
+}
+.filter-chip img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; }
+.filter-chip[aria-pressed="true"] { color: var(--text); box-shadow: inset 0 0 0 2.5px var(--cyan); }
+
+.emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.emoji-btn {
+  aspect-ratio: 1; border: 0; border-radius: 16px; cursor: pointer; line-height: 1;
+  background: var(--navy-800); box-shadow: inset 0 0 0 1px var(--line);
+  font-size: clamp(26px, 2.2vw, 36px);
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  transition: transform .15s var(--ease-out), background-color .15s;
+}
+.emoji-btn:hover { background: var(--navy-700); }
+.emoji-btn:active { transform: scale(.9); }
+.sticker-tools {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 10px 10px 16px; border-radius: 18px; background: var(--navy-800); box-shadow: inset 0 0 0 1px var(--line);
+}
+.sticker-tools-label { flex: 1 1 160px; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.sticker-tools .btn { min-height: 48px; padding: 0 18px; font-size: 16px; }
+.sticker-x {
+  position: absolute; z-index: 2; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%;
+  display: grid; place-items: center; transform: translate(-50%, -50%); cursor: pointer;
+  background: var(--rec); color: #fff; box-shadow: 0 6px 16px rgba(0, 0, 0, .4);
+}
+.sticker-x .ico { width: 20px; height: 20px; stroke-width: 3; }
+
+/* Stickers live as DOM over the preview while editing; renderPoster bakes them into the final JPG. */
+.sticker-layer { position: absolute; inset: 0; container-type: inline-size; pointer-events: none; overflow: hidden; }
+.sticker {
+  position: absolute; transform: translate(-50%, -50%);
+  font-size: calc(var(--size) * 100cqw); line-height: 1;
+  padding: 0; border: 0; background: none; border-radius: 12px;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+  cursor: grab; pointer-events: auto; touch-action: none; user-select: none;
+  animation: sticker-in .3s cubic-bezier(.3, 1.6, .5, 1);
+}
+.sticker.selected { outline: 3px dashed var(--cyan); outline-offset: 4px; }
+.sticker:active { cursor: grabbing; }
+@keyframes sticker-in { from { transform: translate(-50%, -50%) scale(.4); } }
+
 /* ---------- 4. Result ---------- */
 .pane-result {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(420px, 600px);
@@ -467,6 +541,13 @@ body[data-step="camera"] .toast { bottom: auto; top: 88px; }
 .toast[data-tone="error"] { box-shadow: inset 0 0 0 1.5px var(--rec), 0 20px 50px -10px rgba(0, 0, 0, .7); }
 .toast[data-tone="success"] { box-shadow: inset 0 0 0 1.5px var(--cyan), 0 20px 50px -10px rgba(0, 0, 0, .7); }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 16px); } }
+
+/* Short kiosk screens (1366×768): keep the review editor inside one screen. */
+@media (max-height: 820px) {
+  .review-side .panel-head p { display: none; }
+  .filter-chip img { aspect-ratio: 16 / 10; }
+  .filter-grid { gap: 10px; }
+}
 
 /* ---------- Smaller screens: let the page scroll and stack ---------- */
 @media (max-width: 1100px), (max-height: 640px) {

@@ -10,7 +10,7 @@ Event photobooth kiosk (Dies Natalis Teknik Unila 2026). FastAPI backend + vanil
 # Setup + run (Windows; start-windows.bat does the same)
 py -3 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\python.exe -m uvicorn server:app --reload --port 8000
+.venv\Scripts\python.exe -m uvicorn server:app --reload --port 8800
 
 # API smoke test (spawns its own server on port 17866, cleans up its data)
 .venv\Scripts\python.exe tests/smoke_test.py
@@ -26,18 +26,22 @@ python tests/browser_synthetic.py   # optional env: CHROMIUM_PATH, SHOT_DIR (scr
 
 No linter or test framework is configured; tests are plain scripts with `assert`.
 
-Env vars: `PUBLIC_BASE_URL` (URL embedded in QR/WhatsApp links; without it, links use the request host, so `localhost` QRs won't open on phones), `RETENTION_DAYS` (default 7).
+Env vars: `PUBLIC_BASE_URL` (URL embedded in QR/WhatsApp links; without it, links use the request host, so `localhost` QRs won't open on phones), `RETENTION_DAYS` (default 7). `start-windows.bat` defaults `PUBLIC_BASE_URL` to `https://labkom.antiquetech.web.id`.
+
+Public access: a Windows service `cloudflared` (dashboard-managed tunnel, token in `C:\ProgramData\cloudflared\token`) routes `labkom.antiquetech.web.id` → `http://localhost:8800`. Nothing tunnel-related lives in this repo. Uvicorn trusts `X-Forwarded-Proto` from localhost, so request URLs are https behind the tunnel.
 
 ## Architecture
 
-**Flow** (`public/index.html` panes `#pane-register|template|camera|review|result`, switched by `showStep()` in `public/assets/app.js`): register name/program/WhatsApp → pick template → 120 s session, 3 shots with 5 s countdown each (4:3 camera) → review with per-shot retake → confirm uploads → result page with QR/download/WhatsApp link.
+**Asset caching** — Cloudflare caches `/assets/*` for hours. `homepage()` rewrites the `style.css`/`app.js` URLs in `index.html` to `?v=<mtime>` and `/api/templates` does the same for template PNG/preview URLs (`versioned()` in `server.py`), so every changed file gets a new URL. Never link a changed asset without going through these. On Windows, uvicorn `--reload` can hang mid-reload and keep serving old code; for the live kiosk run without `--reload` and restart after changes (`config.json` is read at import).
 
-**Compositing happens client-side.** `renderPoster()` in `app.js` draws each photo *cover-fit* into its slot rectangle, then draws the template PNG **on top** (template has real alpha holes). The final 2160×3840 JPEG is POSTed to `/api/results`. The server (`server.py`) re-validates, `ImageOps.fit`s to 2160×3840 with LANCZOS + unsharp mask (conventional upscale, not AI), and steps JPEG quality down until ≤20 MB.
+**Flow** (`public/index.html` panes `#pane-register|template|camera|review|result`, switched by `showStep()` in `public/assets/app.js`): register name/program/WhatsApp → pick template → 120 s session, one press of the shutter shoots all missing photos automatically (5 s countdown with WebAudio beeps → capture + shutter sound → ~1 s preview → next; the shutter becomes a Berhenti/stop button meanwhile; a retake shoots one photo) (4:3 camera) → review with per-shot retake → confirm uploads → result page with QR/download/WhatsApp link.
+
+**Compositing happens client-side.** `renderPoster()` in `app.js` draws each photo *cover-fit* into its slot rectangle (with the review-step CSS filter via `ctx.filter`), then draws the template PNG **on top** with a soft canvas shadow so photos look recessed into the windows, then bakes emoji stickers (`state.stickers`, fractions of poster size). While editing, stickers are DOM buttons over the preview (`#sticker-layer`) and the preview canvas renders with `{ stickers: false }` to avoid drawing them twice. The final 2160×3840 JPEG is POSTed to `/api/results`. The server (`server.py`) re-validates, `ImageOps.fit`s to 2160×3840 with LANCZOS + unsharp mask (conventional upscale, not AI), and steps JPEG quality down until ≤20 MB.
 
 **Template pipeline** — three places must agree:
-1. `source-templates/*-original.png` — original artwork (941×1672).
+1. `source-templates/*-original.png` — original artwork (941×1672 for decade/pink/sea/rusa; retro/blueprint are 1080×1920 and already have real transparent windows, loaded via `load_ready()`).
 2. `generate_templates.py` — punches transparent windows (rounded-rect masks for decade/rusa; grey-checkerboard color-keying for pink/sea, since AI-generated "transparency" is just painted checkerboard), writes `public/assets/templates/{id}.png`, `{id}-preview.jpg`, and `config.json`.
-3. `config.json` `slots` (x/y/w/h in art-pixel coords) — where photos are drawn behind the overlay. These are defined in the `PROCESSORS` dict, separately from the mask coordinates in each `process_*` function; changing a window means updating both. Never hand-edit `config.json` — rerun the script. Server loads `config.json` at import time for `TEMPLATE_IDS` validation, so restart after regenerating.
+3. `config.json` `slots` (x/y/w/h in art-pixel coords) — where photos are drawn behind the overlay. They are computed by `fit_slots()` from the real transparent window in each generated PNG (+`BLEED` px tucked under the frame); the coordinates in `PROCESSORS` are only search windows. Pink/sea windows come from color-keying the painted checkerboard (`key_checkerboard`, mask opened/closed to remove specks); decade/rusa use rounded-rect masks. Never hand-edit `config.json` — rerun the script. Server loads `config.json` at import time for `TEMPLATE_IDS` validation, so restart after regenerating.
 
 **Storage** — SQLite `data/photobooth.db` (stdlib `sqlite3`, table `entries`: contact info, private; schema created at import in `server.py`, one short-lived connection per call via `db()`) and `data/results/{key}.jpg`, keyed by `secrets.token_urlsafe(16)`. Unguessable key is the only access control. `data/` must never be served statically. Expiry is enforced lazily in `get_entry()` (returns 410 and deletes) plus `tidy_old_results()` on startup, hourly, and on each upload. The public `/r/{key}` page must never expose name/phone/program (smoke test asserts this).
 

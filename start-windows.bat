@@ -18,12 +18,15 @@ if not exist ".venv\Scripts\python.exe" (
 echo Memeriksa dependensi...
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 goto :error
+rem Link QR/WhatsApp mengarah ke domain Cloudflare Tunnel; set PUBLIC_BASE_URL sendiri untuk menimpa.
+if not defined PUBLIC_BASE_URL set "PUBLIC_BASE_URL=https://labkom.antiquetech.web.id"
 echo.
-echo Website akan tersedia di: http://localhost:8000
+echo Website akan tersedia di: http://localhost:8800
+echo Link hasil foto: %PUBLIC_BASE_URL%
 echo Pastikan kamera diizinkan di browser.
 echo Tekan Ctrl+C untuk menghentikan server.
 echo.
-".venv\Scripts\python.exe" -m uvicorn server:app --host 0.0.0.0 --port 8000
+".venv\Scripts\python.exe" -m uvicorn server:app --host 0.0.0.0 --port 8800
 pause
 exit /b 0
 :error

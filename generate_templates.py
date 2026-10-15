@@ -10,41 +10,50 @@ ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'public' / 'assets' / 'templates'
 OUT.mkdir(parents=True, exist_ok=True)
 
-def process_pink():
-    im = Image.open(ROOT / 'source-templates' / 'pink-original.png').convert('RGBA')
+def key_checkerboard(im, rects, max_sat):
+    """Make the painted grey checkerboard inside each rect transparent.
+    rects are (y0, y1, x0, x1). The keyed mask is opened/closed so stray specks
+    don't punch pin-holes into the frame border or leave grey dots on the photo."""
     pix = im.load()
-    slots = [
-        (305, 610, 260, 830),
-        (695, 1010, 120, 700),
-        (1105, 1425, 260, 830)
-    ]
-    for y0, y1, x0, x1 in slots:
+    mask = Image.new('L', im.size, 0)
+    mpix = mask.load()
+    for y0, y1, x0, x1 in rects:
         for y in range(y0, y1):
             for x in range(x0, x1):
                 r, g, b, a = pix[x, y]
                 sat = max(r, g, b) - min(r, g, b)
                 bri = (r + g + b) // 3
-                if sat <= 24 and 95 <= bri <= 228:
-                    pix[x, y] = (r, g, b, 0)
+                if sat <= max_sat and 95 <= bri <= 228:
+                    mpix[x, y] = 255
+    mask = mask.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.MaxFilter(5))  # drop isolated keyed dots
+    mask = mask.filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5))  # fill leftover grey specks
+    mask = mask.filter(ImageFilter.GaussianBlur(0.6))
+    im.putalpha(ImageChops.subtract(im.getchannel('A'), mask))
     return im
+
+def process_pink():
+    im = Image.open(ROOT / 'source-templates' / 'pink-original.png').convert('RGBA')
+    return key_checkerboard(im, [(305, 610, 260, 830), (695, 1010, 120, 700), (1105, 1425, 260, 830)], 24)
 
 def process_sea():
     im = Image.open(ROOT / 'source-templates' / 'sea-original.png').convert('RGBA')
-    pix = im.load()
-    slots = [
-        (180, 530, 260, 810),
-        (650, 1000, 130, 690),
-        (1100, 1435, 260, 810)
-    ]
-    for y0, y1, x0, x1 in slots:
-        for y in range(y0, y1):
-            for x in range(x0, x1):
-                r, g, b, a = pix[x, y]
-                sat = max(r, g, b) - min(r, g, b)
-                bri = (r + g + b) // 3
-                if sat <= 18 and 95 <= bri <= 228:
-                    pix[x, y] = (r, g, b, 0)
-    return im
+    return key_checkerboard(im, [(180, 530, 260, 810), (650, 1000, 130, 690), (1100, 1435, 260, 830)], 18)
+
+BLEED = 8  # px of photo tucked under the frame edge so anti-aliased borders never show white
+
+def fit_slots(im, approx):
+    """Snap each photo slot to the real transparent window (plus BLEED) so the photo is centred in the opening."""
+    alpha = im.getchannel('A')
+    fitted = []
+    for s in approx:
+        box = (max(0, s['x'] - 40), max(0, s['y'] - 40),
+               min(im.width, s['x'] + s['w'] + 40), min(im.height, s['y'] + s['h'] + 40))
+        bb = alpha.crop(box).point(lambda v: 255 if v < 128 else 0).getbbox()
+        if not bb:
+            raise SystemExit(f'No transparent window found near slot {s}')
+        x0, y0, x1, y1 = bb[0] + box[0], bb[1] + box[1], bb[2] + box[0], bb[3] + box[1]
+        fitted.append(dict(x=x0 - BLEED, y=y0 - BLEED, w=x1 - x0 + 2 * BLEED, h=y1 - y0 + 2 * BLEED, r=0))
+    return fitted
 
 def process_rusa():
     im = Image.open(ROOT / 'source-templates' / 'rusa-original.png').convert('RGBA')
@@ -62,6 +71,10 @@ def process_rusa():
     alpha = ImageChops.subtract(alpha, mask)
     im.putalpha(alpha)
     return im
+
+def load_ready(name):
+    """Source artwork that already has real transparent windows (no keying or masking needed)."""
+    return lambda: Image.open(ROOT / 'source-templates' / f'{name}-original.png').convert('RGBA')
 
 def process_decade():
     im = Image.open(ROOT / 'source-templates' / 'decade-original.png').convert('RGBA')
@@ -121,11 +134,32 @@ PROCESSORS = {
             dict(x=255, y=1124, w=540, h=388, r=0),
         ]
     ),
+    'retro': (
+        load_ready('retro'),
+        'Retro Arcade',
+        'Pixel · Neon · Game',
+        [
+            dict(x=260, y=330, w=751, h=430, r=0),
+            dict(x=70, y=820, w=751, h=430, r=0),
+            dict(x=260, y=1310, w=751, h=431, r=0),
+        ]
+    ),
+    'blueprint': (
+        load_ready('blueprint'),
+        'Blueprint Teknik',
+        'Biru · Gear · Engineering',
+        [
+            dict(x=260, y=330, w=751, h=430, r=0),
+            dict(x=70, y=820, w=751, h=430, r=0),
+            dict(x=260, y=1310, w=751, h=431, r=0),
+        ]
+    ),
 }
 
 configs = []
-for tid, (fn, title, desc, slots) in PROCESSORS.items():
+for tid, (fn, title, desc, approx_slots) in PROCESSORS.items():
     im = fn()
+    slots = fit_slots(im, approx_slots)
     im.save(OUT / f'{tid}.png', optimize=True)
     
     # Generate clean preview thumbnail
