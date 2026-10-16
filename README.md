@@ -4,7 +4,7 @@ Website photobooth siap dijalankan untuk acara Dies Natalis Teknik Unila. Dibuat
 
 ## Fitur yang sudah tersedia
 
-- Peserta mengisi **nama, program studi, dan nomor WhatsApp**, serta persetujuan penyimpanan sementara.
+- Peserta mengisi **nkma, program studi, dan nomor WhatsApp**, serta persetujuan penyimpanan sementara.
 - Memilih salah satu dari **4 template asli**: Kamen Rider Decade, Pink Kawaii, Sea Friends, Rusa Unila.
 - **Sesi 2 menit** dimulai setelah kamera siap. Setiap foto 1, 2, dan 3 membutuhkan tombol **Mulai Foto** tersendiri dan countdown **5 detik**.
 - Kamera menggunakan rasio **4:3**; foto otomatis diposisikan dan di-*crop* mengikuti lubang foto pada desain template (beberapa gambar desain asli memiliki proporsi lubang yang tidak persis 4:3).
