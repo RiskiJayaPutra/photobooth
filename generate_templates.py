@@ -309,6 +309,8 @@ PROCESSORS = {
     'kawaii': (load_ready('kawaii'), 'Kawaii LABKOM', 'Pink · Coding · Lucu', 4),
     'monyet': (lambda: key_white_checker('monyet'), 'Monyet Ceria', 'Hutan · Pisang · Lucu', 4),
     'tayo': (lambda: key_white_checker('tayo'), 'Tayo Bus', 'Bus · Kota · Ceria', 4),
+    'maskot': (lambda: key_white_checker('maskot'), 'Maskot Dies Natalis', 'Biru · Gajah · Grid', 4),
+    'maskot2': (lambda: key_white_checker('maskot2'), 'Maskot Dies Natalis 2', 'Biru · Gajah · Zigzag', 4),
 }
 
 configs = []
