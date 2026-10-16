@@ -84,7 +84,7 @@
           <div class="field">
             <label class="consent">
               <input type="checkbox" id="field-consent" required aria-describedby="field-consent-error" />
-              <span>Saya setuju foto dan data kontak disimpan sementara, maksimal 7 hari, untuk keperluan unduh. Siapa pun yang memegang link hasil foto dapat membukanya.</span>
+              <span data-retention="consent">Saya setuju foto dan data kontak disimpan sementara, maksimal 7 hari, untuk keperluan unduh. Siapa pun yang memegang link hasil foto dapat membukanya.</span>
             </label>
             <p class="field-error" id="field-consent-error" hidden></p>
           </div>
@@ -101,7 +101,7 @@
         <div class="pane-bar">
           <div>
             <h2 id="template-title" tabindex="-1" data-focus>Pilih frame</h2>
-            <p>Ketiga fotomu akan mengisi jendela kosong di frame yang kamu pilih.</p>
+            <p>Fotomu akan mengisi jendela kosong di frame yang kamu pilih, 3 atau 4 foto sesuai frame.</p>
           </div>
           <div class="bar-actions">
             <button type="button" class="btn btn-ghost" data-back="register">
@@ -125,9 +125,19 @@
           <div class="cam-fit">
             <div class="camera-shell" id="camera-shell">
               <video id="camera-video" autoplay muted playsinline aria-label="Pratinjau kamera"></video>
+              <canvas id="live-effect" class="live-effect" width="640" height="480" aria-hidden="true" hidden></canvas>
+              <div class="effect-grid" id="effect-grid" role="dialog" aria-label="Semua efek kamera" hidden>
+                <div class="effect-grid-head">
+                  <div class="effect-tabs" id="effect-tabs" role="tablist" aria-label="Kategori efek"></div>
+                  <button type="button" class="effect-grid-close" id="effect-grid-close" aria-label="Tutup daftar efek">
+                    <svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>
+                  </button>
+                </div>
+                <div class="effect-tiles" id="effect-tiles"></div>
+              </div>
               <div class="crop-guide" id="crop-guide" aria-hidden="true"></div>
               <div class="hud" aria-hidden="true">
-                <span class="hud-chip"><i class="rec"></i><span id="hud-shot">Foto 1 dari 3</span></span>
+                <span class="hud-chip"><i class="rec"></i><span id="hud-shot">Foto 1</span></span>
               </div>
               <div class="countdown" id="countdown" aria-hidden="true" hidden>
                 <div class="countdown-ring">
@@ -153,6 +163,7 @@
             </div>
           </div>
 
+          <div id="live-effects" class="effect-strip" role="group" aria-label="Efek kamera"></div>
           <div class="cam-controls">
             <div class="cam-toggles">
               <label class="switch">
@@ -190,8 +201,8 @@
             <i class="timer-bar" aria-hidden="true"></i>
           </div>
           <div class="capture-head">
-            <h2 id="capture-title" tabindex="-1" data-focus>Foto 1 dari 3</h2>
-            <p id="camera-status" aria-live="polite">Tekan Mulai foto sekali. Kamera memotret 3 kali otomatis, hitung mundur 5 detik tiap foto.</p>
+            <h2 id="capture-title" tabindex="-1" data-focus>Foto 1</h2>
+            <p id="camera-status" aria-live="polite">Tekan Mulai foto sekali. Kamera memotret semua foto otomatis, hitung mundur 5 detik tiap foto.</p>
           </div>
           <div class="live-poster" aria-hidden="true">
             <div class="print print-sm">
@@ -237,24 +248,30 @@
             <p class="note" id="review-expired" hidden>Waktu ulang foto sudah habis. Kamu tetap bisa menyimpan hasil ini.</p>
           </div>
           <div class="review-panel" data-panel="filter" role="tabpanel" hidden>
+            <div id="filter-target" class="filter-target" role="group" aria-label="Foto yang diberi filter"></div>
             <div id="filter-grid" class="filter-grid"></div>
-            <p class="fine">Filter dipakai untuk ketiga foto. Frame tidak ikut berubah.</p>
+            <p class="fine">Pilih Semua atau satu foto, lalu ketuk filternya. Frame tidak ikut berubah.</p>
           </div>
           <div class="review-panel" data-panel="sticker" role="tabpanel" hidden>
-            <div id="emoji-grid" class="emoji-grid"></div>
+            <div class="sticker-pick">
+              <div id="sticker-grid" class="emoji-grid sticker-grid" hidden></div>
+              <div id="emoji-grid" class="emoji-grid"></div>
+            </div>
             <div class="sticker-tools" id="sticker-tools">
               <span class="sticker-tools-label" id="sticker-tools-label">Pilih stiker di foto untuk mengubahnya</span>
               <button type="button" class="btn btn-ghost" id="sticker-smaller" aria-label="Perkecil stiker" disabled>A−</button>
               <button type="button" class="btn btn-ghost" id="sticker-bigger" aria-label="Perbesar stiker" disabled>A+</button>
+              <button type="button" class="btn btn-ghost" id="sticker-rotl" aria-label="Putar stiker ke kiri" disabled>↺</button>
+              <button type="button" class="btn btn-ghost" id="sticker-rotr" aria-label="Putar stiker ke kanan" disabled>↻</button>
               <button type="button" class="btn btn-ghost" id="sticker-delete" disabled><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg><span>Hapus</span></button>
             </div>
-            <p class="fine">Ketuk emoji untuk menempel, lalu geser stikernya langsung di foto.</p>
+            <p class="fine">Ketuk stiker atau emoji untuk menempel, lalu geser langsung di foto.</p>
           </div>
           <button type="button" id="confirm-button" class="btn btn-primary btn-lg btn-block">
             <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>
             <span>Simpan &amp; buat QR</span>
           </button>
-          <p class="fine">JPG 2160 × 3840 px, maksimal 20 MB, disimpan 7 hari.</p>
+          <p class="fine" data-retention="size">JPG 2160 × 3840 px, maksimal 20 MB, disimpan 7 hari.</p>
         </div>
 
         <div class="upload-overlay" id="upload-overlay" hidden>
@@ -292,7 +309,7 @@
           <div class="qr-block">
             <div class="qr-card"><img id="qr-image" alt="QR code halaman unduhan foto" width="280" height="280" /></div>
             <div class="qr-help">
-              <p>Buka kamera HP, arahkan ke QR, lalu ketuk link yang muncul. Foto HD bisa diunduh selama 7 hari.</p>
+              <p data-retention="qr">Buka kamera HP, arahkan ke QR, lalu ketuk link yang muncul. Foto HD bisa diunduh selama 7 hari.</p>
               <p class="note" id="qr-network-note" hidden>HP harus terhubung ke Wi-Fi yang sama dengan komputer photobooth.</p>
             </div>
           </div>

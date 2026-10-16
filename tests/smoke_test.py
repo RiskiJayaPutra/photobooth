@@ -39,16 +39,20 @@ def run():
                 content,_=fetch('/health');break
             except Exception:time.sleep(.25)
         else:raise AssertionError('server startup failed')
-        assert json.loads(content)['templates']==6
-        config=json.loads(fetch('/api/templates')[0]);assert len(config)==6
+        frames=json.loads((ROOT/'public/assets/templates/config.json').read_text(encoding='utf-8'))
+        assert json.loads(content)['templates']==len(frames)>=16
+        config=json.loads(fetch('/api/templates')[0]);assert len(config)==len(frames)
         home=fetch('/')[0].decode();assert '/assets/app.js?v=' in home and '/assets/style.css?v=' in home
         assert all('?v=' in t['asset'] for t in config)
-        assert all(len(t['slots'])==3 for t in config)
+        assert all(len(t['slots']) in (3,4) for t in config)
+        assert all(len(s['clip'])>=4 for t in config for s in t['slots'] if 'clip' in s)
         for item in config:
             raw,_=fetch(item['asset'])
             art=Image.open(io.BytesIO(raw));assert art.mode=='RGBA'
             assert art.getextrema()[3][0] == 0 and art.getextrema()[3][1] == 255
-        print('[OK] server, 6 templates, 3 true-alpha photo holes, versioned asset URLs')
+        stickers=json.loads(fetch('/api/stickers')[0]);assert stickers and all('?v=' in u for u in stickers)
+        fetch(stickers[0])
+        print(f'[OK] server, {len(config)} templates, 3/4 true-alpha photo holes, versioned asset + sticker URLs')
         image=Image.new('RGB',(1200,1600),(34,100,175));d=ImageDraw.Draw(image)
         for i in range(20):d.rectangle((i*28,i*35,i*28+40,i*35+100),fill=(i*10%255,90,i*18%255))
         b=io.BytesIO();image.save(b,'JPEG',quality=92)
@@ -74,6 +78,23 @@ def run():
         public=fetch('/r/'+rid)[0].decode()
         assert 'Penguji Labkom' not in public and '081234567891' not in public
         print('[OK] HD JPEG 2160x3840, <=20MB, QR and privacy-friendly result page')
+        fetch('/admin')
+        fetch('/admin/api/entries',expected=401)
+        fetch(f'/admin/photo/{rid}.jpg',expected=401)
+        bad,bad_hdr=multipart({'username':'labkom','password':'salah'},b'')
+        fetch('/admin/login','POST',bad,headers=bad_hdr,expected=401)
+        fetch('/admin/api/entries',headers={'Cookie':f'pb_admin={int(time.time())+999}.forged'},expected=401)
+        good,good_hdr=multipart({'username':'labkom','password':'123'},b'')
+        cookie=fetch('/admin/login','POST',good,headers=good_hdr)[1]['set-cookie'].split(';')[0]
+        assert cookie.startswith('pb_admin=') and 'HttpOnly' in fetch('/admin/login','POST',good,headers=good_hdr)[1]['set-cookie']
+        admin=json.loads(fetch('/admin/api/entries?q=Penguji',headers={'Cookie':cookie})[0])
+        mine=next(e for e in admin['entries'] if e['id']==rid)
+        assert mine['name']=='Penguji Labkom' and mine['whatsapp']=='6281234567891' and 'Teknik Komputer' in admin['programs']
+        assert any(e['id']==rid for e in json.loads(fetch('/admin/api/entries?q=081234567891',headers={'Cookie':cookie})[0])['entries'])
+        assert not json.loads(fetch('/admin/api/entries?q=tidak-ada-nama-ini',headers={'Cookie':cookie})[0])['entries']
+        thumb=Image.open(io.BytesIO(fetch(mine['thumbUrl'],headers={'Cookie':cookie})[0]));assert thumb.width<=360
+        assert fetch(mine['photoUrl'],headers={'Cookie':cookie})[0]==output
+        print('[OK] admin panel: login required, search, thumbnail and HD photo')
         with closing(sqlite3.connect(DB)) as db:
             row=db.execute('SELECT name, program, whatsapp, template_id FROM entries WHERE id=?',(rid,)).fetchone()
         assert row==('Penguji Labkom','Teknik Komputer','6281234567891','pink'), row

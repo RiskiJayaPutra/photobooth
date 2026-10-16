@@ -1,0 +1,11 @@
+# Virtual environments
+.venv-linux/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Secrets & runtime data (foto peserta)
+data/.admin_secret
+data/results/
+data/thumbs/

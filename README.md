@@ -4,14 +4,22 @@ Website photobooth siap dijalankan untuk acara Dies Natalis Teknik Unila. Dibuat
 
 ## Fitur yang sudah tersedia
 
-- Peserta mengisi **nkma, program studi, dan nomor WhatsApp**, serta persetujuan penyimpanan sementara.
-- Memilih salah satu dari **4 template asli**: Kamen Rider Decade, Pink Kawaii, Sea Friends, Rusa Unila.
-- **Sesi 2 menit** dimulai setelah kamera siap. Setiap foto 1, 2, dan 3 membutuhkan tombol **Mulai Foto** tersendiri dan countdown **5 detik**.
+- Peserta mengisi **nama, program studi, dan nomor WhatsApp**, serta persetujuan penyimpanan sementara.
+- Memilih salah satu dari **8 template**: Kamen Rider Decade, Pink Kawaii, Sea Friends, Rusa Unila, Retro Arcade, Blueprint Teknik (3 foto), serta Akasha Bahari dan Teknik Lingkungan (4 foto, grid 2×2).
+- **Sesi 2 menit** dimulai setelah kamera siap. Sekali tekan **Mulai foto**, kamera memotret semua foto (3 atau 4, sesuai frame) otomatis dengan countdown **5 detik** tiap foto.
+- **Efek kamera ala Photo Booth Mac**, terlihat langsung di kamera. Tombol **Semua efek** membuka grid 3×3 dengan preview live (seperti di Mac), dibagi 4 halaman:
+  - **Distorsi**: Bulge, Dent, Twirl, Squeeze, Mirror, Light Tunnel, Fish Eye, Stretch.
+  - **Warna**: Sepia, Hitam putih, Glow, Komik, Pensil warna, Thermal, X-Ray, Pop Art.
+  - **Lucu** (menempel di kepala lewat deteksi wajah MediaPipe, bisa beberapa orang sekaligus): Love beterbangan, Bintang, Mahkota, Telinga kucing, Telinga kelinci, Kacamata, Mahkota bunga, Malaikat.
+  - **Suasana**: Confetti, Gelembung, Salju, Sakura, Balon, Hujan love, Kilau, Hujan emoji.
+  Efek lucu/suasana bisa digabung dengan distorsi atau warna, dan selalu tampil tajam di atas filter.
 - Kamera menggunakan rasio **4:3**; foto otomatis diposisikan dan di-*crop* mengikuti lubang foto pada desain template (beberapa gambar desain asli memiliki proporsi lubang yang tidak persis 4:3).
-- Pratinjau hasil gabungan dan opsi **retake tiap foto** selama waktu sesi tersisa. Setelah waktu habis, peserta masih bisa konfirmasi bila sudah memiliki ketiga foto.
+- Pratinjau hasil gabungan dan opsi **retake tiap foto** selama waktu sesi tersisa. Setelah waktu habis, peserta masih bisa konfirmasi bila semua foto sudah lengkap.
+- **Filter per foto** (foto 1 Thermal, foto 2 Pop Art, dst.) atau sekaligus untuk semua foto, plus **stiker gambar & emoji** yang bisa digeser, diperbesar, dan diputar. Tambah stiker cukup dengan menaruh file SVG/PNG transparan di `public/assets/stickers/` (urut sesuai nama file).
 - Output ditingkatkan ke **2160 × 3840 px (9:16)** menggunakan resampling berkualitas tinggi dan sharpening. Ini **upscale konvensional**, **bukan** AI super-resolution; proses ini tidak dapat menciptakan detail kamera yang tidak tertangkap. Hasil otomatis dikompresi menjadi **JPG maksimal 20 MB**.
 - Halaman unduh, **QR code**, tombol salin link, dan pilihan **WhatsApp**. WhatsApp membuka chat dengan teks/link siap kirim; **tidak mengirim otomatis** tanpa integrasi resmi WhatsApp Business API.
-- Hasil disimpan sampai **7 hari secara default**. Pembersihan otomatis dijalankan saat server mulai, setiap satu jam saat aktif, serta ketika hasil baru diunggah. URL foto berupa token acak yang sukar ditebak.
+- Hasil disimpan sampai **7 hari secara default** (`RETENTION_DAYS=0` = simpan permanen; dipakai di server labkom.eng.unila.ac.id). Pembersihan otomatis dijalankan saat server mulai, setiap satu jam saat aktif, serta ketika hasil baru diunggah. URL foto berupa token acak yang sukar ditebak.
+- **Panel admin** di `/admin` (server Unila: `https://labkom.eng.unila.ac.id/photobooth/admin`): daftar semua peserta (nama, prodi, WhatsApp, frame, waktu) beserta fotonya, pencarian, filter prodi/frame, lihat dan unduh foto HD. Login default `labkom` / `123`; ganti lewat environment variable `ADMIN_USER` dan `ADMIN_PASSWORD`.
 
 ## Menjalankan di Windows
 
@@ -62,7 +70,10 @@ Semua pengaturan dapat diberikan sebagai environment variable sebelum menjalanka
 | Variabel | Default | Kegunaan |
 |---|---|---|
 | `PUBLIC_BASE_URL` | mengikuti domain request | URL yang tertanam dalam QR dan pesan WA |
-| `RETENTION_DAYS` | `7` | Lama penyimpanan data dan gambar |
+| `RETENTION_DAYS` | `7` | Lama penyimpanan data dan gambar (`0` = permanen) |
+| `BASE_PATH` | kosong | Prefix sub-path di balik reverse proxy, misalnya `/photobooth` |
+| `ADMIN_USER` / `ADMIN_PASSWORD` | `labkom` / `123` | Login panel admin |
+| `ADMIN_SECRET` | dibuat otomatis | Kunci tanda tangan cookie admin (`data/.admin_secret`) |
 
 Konstanta pada `public/assets/app.js` untuk pengembangan: `SESSION_SECONDS=120`, `SHOT_COUNTDOWN=5`, `FINAL_SIZE=2160×3840`, dan ukuran output 20 MB. Jika mengubah parameter tampilan, sesuaikan juga server dan pemberitahuan privasi.
 
@@ -91,7 +102,7 @@ labkom-photobooth/
 
 ### Menyesuaikan area transparan foto
 
-Template yang dihasilkan dari AI umumnya hanya **menggambar motif kotak-kotak**, sehingga belum benar-benar transparan. Script `generate_templates.py` memotong tiga jendela foto dari desain asal dan membuat PNG dengan alpha transparan asli. Untuk memindahkan/mengubah area foto, ubah daftar koordinat `slots=[[x0,y0,x1,y1,radius],...]` dalam script lalu jalankan:
+Template yang dihasilkan dari AI umumnya hanya **menggambar motif kotak-kotak**, sehingga belum benar-benar transparan. Script `generate_templates.py` memotong jendela foto (3 atau 4) dari desain asal dan membuat PNG dengan alpha transparan asli. Untuk memindahkan/mengubah area foto, ubah daftar koordinat `slots=[[x0,y0,x1,y1,radius],...]` dalam script lalu jalankan:
 
 ```bash
 python generate_templates.py

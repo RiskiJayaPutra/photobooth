@@ -9,15 +9,57 @@ const SHOT_COUNTDOWN = 5;
 const SHOT_PREVIEW_MS = 1000; // quick look at each photo before the next automatic countdown
 const FINAL_SIZE = { width: 2160, height: 3840 };
 const RESULT_IDLE_SECONDS = 120; // result screen returns to start so the next visitor never sees the previous photo
-const SLOT_NAMES = ['atas', 'tengah', 'bawah'];
+// Camera effects, Photo Booth (Mac) style. Same list for the live camera and the review filter tab:
+// `css` runs through ctx.filter, `px` edits pixels, `warp` remaps pixels through a cached lookup table.
 const FILTERS = [
-  { id: 'normal', label: 'Normal', css: 'none' },
-  { id: 'lembut', label: 'Lembut', css: 'blur({blur}) brightness(1.08) saturate(1.1) contrast(.95)' }, // soft-focus, blur scales with output size
-  { id: 'cerah', label: 'Cerah', css: 'brightness(1.08) contrast(1.06) saturate(1.2)' },
-  { id: 'hangat', label: 'Hangat', css: 'sepia(.22) saturate(1.25) hue-rotate(-8deg) brightness(1.04)' },
-  { id: 'vintage', label: 'Vintage', css: 'sepia(.5) contrast(.92) brightness(1.05) saturate(.85)' },
-  { id: 'bw', label: 'Hitam putih', css: 'grayscale(1) contrast(1.12)' },
+  { id: 'normal', label: 'Normal', group: 'all', css: 'none' },
+  { id: 'bulge', label: 'Bulge', group: 'distort', warp: 'bulge' },
+  { id: 'dent', label: 'Dent', group: 'distort', warp: 'dent' },
+  { id: 'twirl', label: 'Twirl', group: 'distort', warp: 'twirl' },
+  { id: 'squeeze', label: 'Squeeze', group: 'distort', warp: 'squeeze' },
+  { id: 'mirror', label: 'Mirror', group: 'distort', warp: 'mirror' },
+  { id: 'tunnel', label: 'Light Tunnel', group: 'distort', warp: 'tunnel' },
+  { id: 'fisheye', label: 'Fish Eye', group: 'distort', warp: 'fisheye' },
+  { id: 'stretch', label: 'Stretch', group: 'distort', warp: 'stretch' },
+  { id: 'vintage', label: 'Sepia', group: 'color', css: 'sepia(.85) contrast(1.08) brightness(1.04) saturate(1.1)' },
+  { id: 'bw', label: 'Hitam putih', group: 'color', css: 'grayscale(1) contrast(1.3) brightness(1.05)' },
+  { id: 'glow', label: 'Glow', group: 'color', px: glowFx },
+  { id: 'komik', label: 'Komik', group: 'color', px: comicFx },
+  { id: 'pensil', label: 'Pensil warna', group: 'color', px: pencilFx },
+  { id: 'thermal', label: 'Thermal', group: 'color', px: thermalFx },
+  { id: 'xray', label: 'X-Ray', group: 'color', px: xrayFx },
+  { id: 'popart', label: 'Pop Art', group: 'color', px: popArtFx },
 ];
+// Fun overlays drawn into the photo itself: `face` ones follow detected faces, `scene` ones fill the frame.
+const OVERLAYS = [
+  { id: 'none', label: 'Tanpa efek lucu', group: 'all' },
+  { id: 'love', label: 'Love', icon: '💕', group: 'face' },
+  { id: 'sparkle', label: 'Bintang', icon: '⭐', group: 'face' },
+  { id: 'crown', label: 'Mahkota', icon: '👑', group: 'face' },
+  { id: 'cat', label: 'Kucing', icon: '🐱', group: 'face' },
+  { id: 'bunny', label: 'Kelinci', icon: '🐰', group: 'face' },
+  { id: 'shades', label: 'Kacamata', icon: '😎', group: 'face' },
+  { id: 'flowers', label: 'Mahkota bunga', icon: '🌸', group: 'face' },
+  { id: 'halo', label: 'Malaikat', icon: '😇', group: 'face' },
+  { id: 'confetti', label: 'Confetti', icon: '🎉', group: 'scene' },
+  { id: 'bubbles', label: 'Gelembung', icon: '🫧', group: 'scene' },
+  { id: 'snow', label: 'Salju', icon: '❄️', group: 'scene' },
+  { id: 'sakura', label: 'Sakura', icon: '🌸', group: 'scene' },
+  { id: 'balloons', label: 'Balon', icon: '🎈', group: 'scene' },
+  { id: 'hearts', label: 'Hujan love', icon: '💖', group: 'scene' },
+  { id: 'stars', label: 'Kilau', icon: '✨', group: 'scene' },
+  { id: 'emoji', label: 'Hujan emoji', icon: '🥳', group: 'scene' },
+];
+// Pages of the 3×3 effect grid (Normal sits in the middle, as on a Mac).
+const EFFECT_PAGES = [
+  { id: 'distort', label: 'Distorsi', kind: 'filter' },
+  { id: 'color', label: 'Warna', kind: 'filter' },
+  { id: 'face', label: 'Lucu', kind: 'overlay' },
+  { id: 'scene', label: 'Suasana', kind: 'overlay' },
+];
+const BASE = window.BASE_PATH || ''; // set by server.py when served under a sub-path (e.g. /photobooth)
+const FX_SIZE = { width: 800, height: 600 }; // pixel effects run at a fixed size so line weight matches the live preview
+const LIVE_FX_SIZE = { width: 640, height: 480 };
 const EMOJIS = ['😎', '🥳', '😍', '🤩', '😂', '🔥', '✨', '💖', '👑', '🎓', '🎉', '🦌'];
 const MAX_STICKERS = 12;
 const EMOJI_FONT = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
@@ -42,10 +84,20 @@ const state = {
   idleEndsAt: 0,
   idleTimer: null,
   frameArmTimer: null,
-  filter: 'normal',
-  stickers: [], // { emoji, x, y, size } as fractions of the poster width/height
+  filters: ['normal', 'normal', 'normal'], // one filter id per photo
+  filterTarget: -1, // review filter tab: -1 = all photos, otherwise photo index
+  liveFilter: 'normal', // camera effect; copied into filters[] when a photo is taken
+  liveOverlay: 'none', // fun overlay; baked into the raw photo at capture
+  overlays: ['none', 'none', 'none'], // overlay id per photo, so a retake reopens with the same one
+  layers: [null, null, null], // per photo: transparent PNG of its fun overlay, drawn on top of the filtered photo
+  effectPage: 'distort', // open page of the 3×3 effect grid
+  stickerSources: [], // image sticker URLs from /api/stickers
+  stickers: [], // { emoji | src, x, y, size, rot } — x/y/size as fractions of the poster width/height, rot in degrees
   selectedSticker: -1,
 };
+const fxCache = []; // per photo: { id, canvas } for its current filter
+const artCache = new Map(); // sticker src → Promise<img>
+let liveFxRaf = 0;
 let toastTimer;
 let countdownAbort = false;
 let stopRequested = false;
@@ -71,7 +123,500 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function nextFrame() { return new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))); }
 function clamp(value, min = 0, max = 1) { return Math.min(max, Math.max(min, value)); }
 function icon(id) { return `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`; }
-function filterCss(f, blurPx) { return f.css.replace('{blur}', `${blurPx.toFixed(2)}px`); }
+function filterCss(f, blurPx) { return (f.css || 'none').replace('{blur}', `${blurPx.toFixed(2)}px`); }
+function filterById(id) { return FILTERS.find(f => f.id === id) || FILTERS[0]; }
+function overlayById(id) { return OVERLAYS.find(o => o.id === id) || OVERLAYS[0]; }
+function fixedSize(f) { return Boolean(f.px || f.warp); } // effects computed at FX_SIZE/LIVE_FX_SIZE
+function shotCount() { return state.template?.slots.length ?? 3; }
+function slotName(i) {
+  // Derived from slot positions so 3-in-a-column and 2×2 frames both read naturally ("tengah", "kiri bawah").
+  const slots = state.template?.slots, s = slots?.[i];
+  if (!s) return `${i + 1}`;
+  const sameRow = o => Math.abs(o.y - s.y) <= s.h / 2;
+  const rows = [];
+  for (const o of [...slots].sort((a, b) => a.y - b.y)) if (!rows.length || o.y - rows.at(-1) > o.h / 2) rows.push(o.y);
+  const r = rows.findIndex(y => Math.abs(y - s.y) <= s.h / 2);
+  const row = (rows.length === 2 ? ['atas', 'bawah'] : ['atas', 'tengah', 'bawah'])[r] ?? `baris ${r + 1}`;
+  const mates = slots.filter(sameRow);
+  if (mates.length < 2) return row;
+  return `${s.x === Math.min(...mates.map(o => o.x)) ? 'kiri' : 'kanan'} ${row}`;
+}
+
+/* ---------- Effects (Photo Booth style, plain canvas pixel ops) ---------- */
+function blankCanvas(w, h) { return Object.assign(document.createElement('canvas'), { width: w, height: h }); }
+function effectCanvas(source, f, w, h, canvas = blankCanvas(w, h)) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: fixedSize(f) });
+  ctx.filter = 'none';
+  drawImageCover(ctx, source, { x: 0, y: 0, w, h, r: 0 }, filterCss(f, w * .0015));
+  if (f.px) f.px(ctx, w, h);
+  if (f.warp) applyWarp(ctx, w, h, f.warp);
+  return canvas;
+}
+function luma(p, i) { return p[i] * .299 + p[i + 1] * .587 + p[i + 2] * .114; }
+function softPixels(ctx, w, h) {
+  // Slightly blurred copy so edge detection follows faces, not sensor noise.
+  const t = blankCanvas(w, h).getContext('2d', { willReadFrequently: true });
+  t.filter = `blur(${w / 640}px)`;
+  t.drawImage(ctx.canvas, 0, 0);
+  return t.getImageData(0, 0, w, h).data;
+}
+function edgeMap(p, w, h) {
+  const g = new Float32Array(w * h), e = new Float32Array(w * h);
+  for (let i = 0, j = 0; j < g.length; i += 4, j++) g[j] = luma(p, i);
+  for (let y = 1; y < h - 1; y++) for (let x = 1, k = y * w + 1; x < w - 1; x++, k++) {
+    const gx = g[k - w + 1] + 2 * g[k + 1] + g[k + w + 1] - g[k - w - 1] - 2 * g[k - 1] - g[k + w - 1];
+    const gy = g[k + w - 1] + 2 * g[k + w] + g[k + w + 1] - g[k - w - 1] - 2 * g[k - w] - g[k - w + 1];
+    e[k] = Math.abs(gx) + Math.abs(gy);
+  }
+  return e;
+}
+function gradientLut(stops) {
+  // stops: [position 0..1, r, g, b] → 256 RGB entries
+  const lut = new Uint8ClampedArray(256 * 3);
+  for (let v = 0; v < 256; v++) {
+    const t = v / 255, b = stops.findIndex(s => s[0] >= t), a = Math.max(0, b - 1);
+    const k = stops[b][0] === stops[a][0] ? 0 : (t - stops[a][0]) / (stops[b][0] - stops[a][0]);
+    for (let c = 1; c < 4; c++) lut[v * 3 + c - 1] = stops[a][c] + (stops[b][c] - stops[a][c]) * k;
+  }
+  return lut;
+}
+const THERMAL_LUT = gradientLut([[0, 20, 0, 90], [.28, 110, 0, 170], [.5, 235, 20, 70], [.72, 255, 160, 0], [.9, 255, 240, 60], [1, 255, 255, 230]]);
+function mapPixels(ctx, w, h, fn) {
+  const image = ctx.getImageData(0, 0, w, h);
+  fn(image.data);
+  ctx.putImageData(image, 0, 0);
+}
+function thermalFx(ctx, w, h) {
+  mapPixels(ctx, w, h, p => {
+    for (let i = 0; i < p.length; i += 4) {
+      const v = Math.round(luma(p, i)) * 3;
+      p[i] = THERMAL_LUT[v]; p[i + 1] = THERMAL_LUT[v + 1]; p[i + 2] = THERMAL_LUT[v + 2];
+    }
+  });
+}
+function xrayFx(ctx, w, h) {
+  mapPixels(ctx, w, h, p => {
+    for (let i = 0; i < p.length; i += 4) {
+      const v = clamp(((255 - luma(p, i)) - 128) * 1.45 + 128, 0, 255);
+      p[i] = v * .55; p[i + 1] = v * .88; p[i + 2] = v * 1.05 + 20;
+    }
+  });
+}
+function comicFx(ctx, w, h) {
+  const e = edgeMap(softPixels(ctx, w, h), w, h);
+  mapPixels(ctx, w, h, p => {
+    for (let i = 0, j = 0; i < p.length; i += 4, j++) {
+      if (e[j] > 150) { p[i] = p[i + 1] = p[i + 2] = 18; continue; }
+      const l = luma(p, i);
+      for (let c = 0; c < 3; c++) p[i + c] = Math.round(clamp(l + (p[i + c] - l) * 1.7, 0, 255) / 64) * 64 + 24;
+    }
+  });
+}
+function pencilFx(ctx, w, h) {
+  const e = edgeMap(softPixels(ctx, w, h), w, h);
+  mapPixels(ctx, w, h, p => {
+    for (let i = 0, j = 0; i < p.length; i += 4, j++) {
+      const l = luma(p, i), ink = Math.min(1, e[j] / 260) * .9 + (255 - l) / 255 * .12;
+      for (let c = 0; c < 3; c++) p[i + c] = (238 + (p[i + c] - l) * .45) * (1 - ink);
+    }
+  });
+}
+function glowFx(ctx, w, h) {
+  const copy = blankCanvas(w, h);
+  copy.getContext('2d').drawImage(ctx.canvas, 0, 0);
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = .75;
+  ctx.filter = `blur(${w / 70}px) brightness(.95) saturate(1.3)`;
+  ctx.drawImage(copy, 0, 0);
+  ctx.restore();
+}
+const POP_COLORS = [ // dark, mid, light per tile
+  [[200, 0, 90], [255, 120, 0], [255, 236, 0]],
+  [[20, 30, 160], [0, 190, 255], [180, 255, 120]],
+  [[100, 0, 160], [255, 60, 160], [255, 200, 220]],
+  [[0, 110, 70], [255, 210, 0], [255, 255, 255]],
+];
+function popArtFx(ctx, w, h) {
+  // Warhol grid: the photo four times, each posterized into its own three inks.
+  const tw = w >> 1, th = h >> 1;
+  const small = blankCanvas(tw, th).getContext('2d', { willReadFrequently: true });
+  small.drawImage(ctx.canvas, 0, 0, tw, th);
+  const src = small.getImageData(0, 0, tw, th).data;
+  POP_COLORS.forEach((inks, t) => {
+    const tile = small.createImageData(tw, th), p = tile.data;
+    for (let i = 0; i < p.length; i += 4) {
+      const ink = inks[Math.min(2, Math.floor(luma(src, i) / 86))];
+      p[i] = ink[0]; p[i + 1] = ink[1]; p[i + 2] = ink[2]; p[i + 3] = 255;
+    }
+    ctx.putImageData(tile, (t % 2) * tw, (t >> 1) * th);
+  });
+}
+/* ---------- Distortions (Bulge, Twirl, …): inverse map, one lookup table per effect and size ---------- */
+const warpCache = new Map();
+const WARPS = {
+  // Each takes the destination point (dx, dy) relative to the centre, in units of the half-height,
+  // and returns where to sample the source, or null for black.
+  bulge(x, y) { const r = Math.hypot(x, y), R = .9; return r < R ? scale(x, y, (r / R) ** .7) : [x, y]; },
+  dent(x, y) { const r = Math.hypot(x, y), R = .9; return r < R ? scale(x, y, (r / R) ** -.45) : [x, y]; },
+  twirl(x, y) {
+    const r = Math.hypot(x, y), R = 1.05;
+    if (r >= R) return [x, y];
+    const a = Math.atan2(y, x) + 3.2 * (1 - r / R) ** 2;
+    return [r * Math.cos(a), r * Math.sin(a)];
+  },
+  squeeze(x, y) { const f = Math.max(0, 1 - (x / 1.3) ** 2 - (y / 1.1) ** 2); return [x * (1 + 1.1 * f), y]; },
+  stretch(x, y) { const f = Math.max(0, 1 - (x / 1.1) ** 2 - (y / 1.3) ** 2); return [x, y * (1 - .5 * f)]; },
+  mirror(x, y) { return [-Math.abs(x), y]; },
+  tunnel(x, y) { const r = Math.hypot(x, y), R = .48; return r < R ? [x, y] : scale(x, y, R * (.985 + .015 * Math.sin(Math.atan2(y, x) * 40)) / r); },
+  fisheye(x, y) {
+    const r = Math.hypot(x, y), R = 1.12;
+    if (r > R) return null;
+    const k = 1.9, t = r / R;
+    return r ? scale(x, y, R * 1.25 * ((Math.exp(k * t) - 1) / (Math.exp(k) - 1)) / r) : [0, 0];
+  },
+};
+function scale(x, y, k) { return [x * k, y * k]; }
+function warpMap(id, w, h) {
+  const key = `${id}:${w}x${h}`;
+  if (!warpCache.has(key)) {
+    const map = new Int32Array(w * h), cx = w / 2, cy = h / 2, unit = h / 2, fn = WARPS[id];
+    for (let y = 0, k = 0; y < h; y++) for (let x = 0; x < w; x++, k++) {
+      const p = fn((x + .5 - cx) / unit, (y + .5 - cy) / unit);
+      if (!p) { map[k] = -1; continue; }
+      const sx = Math.min(w - 1, Math.max(0, Math.round(cx + p[0] * unit - .5)));
+      const sy = Math.min(h - 1, Math.max(0, Math.round(cy + p[1] * unit - .5)));
+      map[k] = sy * w + sx;
+    }
+    warpCache.set(key, map);
+  }
+  return warpCache.get(key);
+}
+function applyWarp(ctx, w, h, id) {
+  const map = warpMap(id, w, h);
+  const src = new Uint32Array(ctx.getImageData(0, 0, w, h).data.buffer);
+  const out = ctx.createImageData(w, h), dst = new Uint32Array(out.data.buffer);
+  for (let k = 0; k < map.length; k++) dst[k] = map[k] < 0 ? 0xFF000000 : src[map[k]];
+  ctx.putImageData(out, 0, 0);
+}
+
+/* ---------- Fun overlays: face accessories + scene particles, drawn into the photo ---------- */
+// MediaPipe face detector (vendored in assets/vendor/mediapipe, loaded on first use).
+const face = { detector: null, loading: null, failed: false, boxes: [], seenAt: 0, tick: 0 };
+const DEFAULT_FACE = { x: .39, y: .3, w: .22, h: .3, kp: null }; // used only if the detector cannot load
+function loadFaceDetector() {
+  face.loading ??= (async () => {
+    const root = `${location.origin}${BASE}/assets/vendor/mediapipe`;
+    const { FilesetResolver, FaceDetector } = await import(`${root}/vision_bundle.mjs`);
+    const fileset = await FilesetResolver.forVisionTasks(`${root}/wasm`);
+    const make = delegate => FaceDetector.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: `${root}/blaze_face_short_range.tflite`, delegate },
+      runningMode: 'VIDEO', minDetectionConfidence: .5,
+    });
+    face.detector = await make('GPU').catch(() => make('CPU'));
+  })().catch(error => { face.failed = true; console.warn('Deteksi wajah tidak tersedia:', error); });
+  return face.loading;
+}
+function detectFaces(canvas) {
+  // Every other frame is enough; boxes are smoothed so accessories do not jitter.
+  if (!face.detector || face.tick++ % 2) return;
+  let found;
+  try { found = face.detector.detectForVideo(canvas, performance.now()).detections; } catch { return; }
+  const now = performance.now();
+  if (!found.length) { if (now - face.seenAt > 600) face.boxes = []; return; }
+  face.seenAt = now;
+  const next = found.slice(0, 4).map(d => {
+    const b = d.boundingBox;
+    return { x: b.originX / canvas.width, y: b.originY / canvas.height, w: b.width / canvas.width, h: b.height / canvas.height,
+      kp: d.keypoints?.length >= 4 ? d.keypoints.map(k => [k.x, k.y]) : null };
+  }).sort((a, b) => a.x - b.x);
+  if (next.length !== face.boxes.length) { face.boxes = next; return; }
+  const mix = (a, b) => a + (b - a) * .55;
+  face.boxes = next.map((n, i) => {
+    const o = face.boxes[i];
+    return { x: mix(o.x, n.x), y: mix(o.y, n.y), w: mix(o.w, n.w), h: mix(o.h, n.h),
+      kp: n.kp && o.kp ? n.kp.map((p, j) => [mix(o.kp[j][0], p[0]), mix(o.kp[j][1], p[1])]) : n.kp };
+  });
+}
+function facesForDraw() { return face.boxes.length ? face.boxes : face.failed ? [DEFAULT_FACE] : []; }
+
+function drawOverlay(ctx, w, h, id, t) {
+  const o = overlayById(id);
+  if (o.id === 'none') return;
+  ctx.save();
+  if (o.group === 'scene') SCENE_FX[o.id](ctx, w, h, t);
+  else facesForDraw().forEach((f, i) => {
+    const fw = f.w * w, fh = f.h * h, fx = f.x * w, fy = f.y * h;
+    // BlazeFace boxes run from the brows to the chin, so the top of the head is ~40% above the box.
+    const F = { fx, fy, fw, fh, cx: fx + fw / 2, top: fy - fh * .4, kp: f.kp?.map(([x, y]) => [x * w, y * h]) };
+    ctx.save(); FACE_FX[o.id](ctx, F, t, i); ctx.restore();
+  });
+  ctx.restore();
+}
+function rand(i, k = 0) { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); }
+function heart(ctx, x, y, s, color) {
+  ctx.beginPath();
+  ctx.moveTo(x, y + s * .38);
+  ctx.bezierCurveTo(x - s * .62, y - s * .02, x - s * .46, y - s * .62, x, y - s * .26);
+  ctx.bezierCurveTo(x + s * .46, y - s * .62, x + s * .62, y - s * .02, x, y + s * .38);
+  ctx.fillStyle = color; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x - s * .22, y - s * .22, s * .09, s * .06, -.6, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fill();
+}
+function star(ctx, x, y, r, color, points = 5, inner = .45) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / points, rr = i % 2 ? r * inner : r;
+    ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+}
+function flower(ctx, x, y, r, petal, rot) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+  ctx.fillStyle = petal;
+  for (let i = 0; i < 5; i++) {
+    ctx.rotate(Math.PI * 2 / 5);
+    ctx.beginPath(); ctx.ellipse(0, -r * .55, r * .38, r * .55, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.beginPath(); ctx.arc(0, 0, r * .3, 0, Math.PI * 2); ctx.fillStyle = '#FFD23F'; ctx.fill();
+  ctx.restore();
+}
+function eyes(F) {
+  // Keypoints 0/1 are the eyes; estimate from the box when they are missing.
+  if (F.kp) return [F.kp[0], F.kp[1]].sort((a, b) => a[0] - b[0]);
+  const y = F.fy + F.fh * .36;
+  return [[F.cx - F.fw * .2, y], [F.cx + F.fw * .2, y]];
+}
+const HEART_COLORS = ['#FF3D7F', '#FF6FA5', '#FF2D55', '#FF9EC4', '#E0218A'];
+const PARTY_COLORS = ['#FF3D7F', '#FFD23F', '#3DDCFF', '#7CFF6B', '#B07CFF', '#FF8A3D'];
+const FACE_FX = {
+  love(ctx, F, t, seed) {
+    for (let i = 0; i < 9; i++) {
+      const ph = (t * .42 + i / 9 + seed * .17) % 1;
+      const x = F.cx + Math.sin(ph * 7 + i * 1.9) * F.fw * .3 + (rand(i, 1) - .5) * F.fw * 1.1;
+      const y = F.top + F.fh * .3 - ph * F.fh * .85;
+      ctx.globalAlpha = ph < .15 ? ph / .15 : 1 - (ph - .15) / .85;
+      heart(ctx, x, y, F.fw * (.22 + .12 * rand(i, 2)) * (1 + .12 * Math.sin(t * 8 + i)), HEART_COLORS[i % HEART_COLORS.length]);
+    }
+  },
+  sparkle(ctx, F, t) {
+    const stars = [];
+    for (let i = 0; i < 10; i++) {
+      const a = t * 1.3 + i * Math.PI * 2 / 10;
+      stars.push({ x: F.cx + Math.cos(a) * F.fw * .72, y: F.top + F.fh * .08 + Math.sin(a) * F.fh * .16, depth: Math.sin(a), i });
+    }
+    ctx.shadowColor = '#FFF3A0'; ctx.shadowBlur = F.fw * .08;
+    for (const s of stars.sort((a, b) => a.depth - b.depth)) {
+      const r = F.fw * (.07 + .03 * s.depth) * (.8 + .3 * Math.sin(t * 6 + s.i));
+      star(ctx, s.x, s.y, r, s.i % 3 ? '#FFE45C' : '#FFFFFF');
+    }
+  },
+  crown(ctx, F, t) {
+    const w = F.fw * 1.02, h = F.fh * .48, x = F.cx - w / 2, base = F.top + F.fh * .2 + Math.sin(t * 3) * F.fh * .015;
+    const g = ctx.createLinearGradient(0, base - h, 0, base);
+    g.addColorStop(0, '#FFF1A6'); g.addColorStop(.5, '#FFC93C'); g.addColorStop(1, '#D98E04');
+    ctx.beginPath();
+    ctx.moveTo(x, base);
+    [[0, -.55], [.17, -.25], [.3, -.95], [.5, -.35], [.7, -.95], [.83, -.25], [1, -.55], [1, 0]]
+      .forEach(([px, py]) => ctx.lineTo(x + px * w, base + py * h));
+    ctx.closePath();
+    ctx.fillStyle = g; ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = F.fw * .04; ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#B8770A'; ctx.fillRect(x, base - h * .2, w, h * .2);
+    [[.15, '#FF2D55'], [.5, '#3DA5FF'], [.85, '#2BD67B']].forEach(([px, c]) => {
+      ctx.beginPath(); ctx.arc(x + px * w, base - h * .1, h * .09, 0, Math.PI * 2); ctx.fillStyle = c; ctx.fill();
+    });
+    [[.3, -.95], [.7, -.95], [0, -.55], [1, -.55]].forEach(([px, py]) => {
+      ctx.beginPath(); ctx.arc(x + px * w, base + py * h, h * .07, 0, Math.PI * 2); ctx.fillStyle = '#FFFFFF'; ctx.fill();
+    });
+    ctx.globalAlpha = .5 + .5 * Math.sin(t * 5);
+    star(ctx, x + w * .62, base - h * .55, h * .14, '#FFFFFF', 4, .3);
+  },
+  cat(ctx, F, t) {
+    const wob = Math.sin(t * 4) * .05;
+    [-1, 1].forEach(side => {
+      ctx.save();
+      ctx.translate(F.cx + side * F.fw * .32, F.top + F.fh * .18);
+      ctx.rotate(side * (.32 + wob));
+      const ew = F.fw * .38, eh = F.fh * .5;
+      ctx.beginPath(); ctx.moveTo(-ew / 2, 0); ctx.quadraticCurveTo(-ew * .1, -eh, 0, -eh); ctx.quadraticCurveTo(ew * .1, -eh, ew / 2, 0); ctx.closePath();
+      ctx.fillStyle = '#3B3346'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-ew * .28, -eh * .08); ctx.quadraticCurveTo(0, -eh * .9, ew * .28, -eh * .08); ctx.closePath();
+      ctx.fillStyle = '#FF9EC4'; ctx.fill();
+      ctx.restore();
+    });
+    const [l, r] = eyes(F), nose = F.kp ? F.kp[2] : [F.cx, F.fy + F.fh * .58];
+    ctx.fillStyle = 'rgba(255,110,160,.38)';
+    [l, r].forEach(([ex, ey], i) => { ctx.beginPath(); ctx.ellipse(ex + (i ? 1 : -1) * F.fw * .06, ey + F.fh * .26, F.fw * .1, F.fh * .055, 0, 0, Math.PI * 2); ctx.fill(); });
+    ctx.beginPath(); ctx.ellipse(nose[0], nose[1], F.fw * .055, F.fh * .035, 0, 0, Math.PI * 2); ctx.fillStyle = '#FF6FA5'; ctx.fill();
+    ctx.strokeStyle = 'rgba(40,30,50,.85)'; ctx.lineWidth = Math.max(1, F.fw * .012); ctx.lineCap = 'round';
+    [-1, 1].forEach(side => [-.06, 0, .06].forEach(dy => {
+      ctx.beginPath(); ctx.moveTo(nose[0] + side * F.fw * .08, nose[1] + F.fh * .02);
+      ctx.lineTo(nose[0] + side * F.fw * .42, nose[1] + F.fh * (dy * 1.6));
+      ctx.stroke();
+    }));
+  },
+  bunny(ctx, F, t) {
+    [-1, 1].forEach(side => {
+      ctx.save();
+      ctx.translate(F.cx + side * F.fw * .2, F.top + F.fh * .22);
+      ctx.rotate(side * .14 + Math.sin(t * 3 + side) * .07);
+      const ew = F.fw * .23, eh = F.fh * 1.0;
+      ctx.beginPath(); ctx.ellipse(0, -eh / 2, ew / 2, eh / 2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF'; ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = F.fw * .03; ctx.fill(); ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.ellipse(0, -eh * .52, ew * .26, eh * .38, 0, 0, Math.PI * 2); ctx.fillStyle = '#FFB3CF'; ctx.fill();
+      ctx.restore();
+    });
+    const nose = F.kp ? F.kp[2] : [F.cx, F.fy + F.fh * .58];
+    heart(ctx, nose[0], nose[1], F.fw * .09, '#FF6FA5');
+  },
+  shades(ctx, F, t) {
+    const [l, r] = eyes(F), d = Math.hypot(r[0] - l[0], r[1] - l[1]) || F.fw * .4;
+    ctx.translate((l[0] + r[0]) / 2, (l[1] + r[1]) / 2);
+    ctx.rotate(Math.atan2(r[1] - l[1], r[0] - l[0]));
+    const lw = d * .95, lh = d * .62;
+    const g = ctx.createLinearGradient(0, -lh / 2, 0, lh / 2);
+    g.addColorStop(0, '#2A2F4A'); g.addColorStop(1, '#05060C');
+    ctx.fillStyle = g; ctx.strokeStyle = '#111'; ctx.lineWidth = d * .06;
+    [-1, 1].forEach(side => {
+      ctx.beginPath(); ctx.roundRect(side * d * .52 - lw / 2, -lh / 2, lw, lh, lh * .35); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.globalAlpha = .45 + .25 * Math.sin(t * 2);
+      ctx.beginPath(); ctx.moveTo(side * d * .52 - lw * .3, -lh * .3); ctx.lineTo(side * d * .52 - lw * .05, -lh * .3); ctx.lineTo(side * d * .52 - lw * .3, lh * .1); ctx.closePath();
+      ctx.fillStyle = '#FFFFFF'; ctx.fill(); ctx.restore();
+    });
+    ctx.beginPath(); ctx.moveTo(-d * .12, -lh * .2); ctx.quadraticCurveTo(0, -lh * .38, d * .12, -lh * .2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-d * .52 - lw / 2, -lh * .3); ctx.lineTo(-d * 1.2, -lh * .4); ctx.moveTo(d * .52 + lw / 2, -lh * .3); ctx.lineTo(d * 1.2, -lh * .4); ctx.stroke();
+  },
+  flowers(ctx, F, t) {
+    const petals = ['#FF8FB8', '#FFFFFF', '#FFB86B', '#C59BFF', '#FF6FA5', '#FFFFFF', '#FF8FB8'];
+    for (let i = 0; i < 9; i++) {
+      const a = -1 + i * 2 / 8, x = F.cx + Math.sin(a) * F.fw * .6, y = F.top + F.fh * .28 + (1 - Math.cos(a)) * F.fh * .4;
+      if (i < 8) {
+        const a2 = a + 1 / 8;
+        ctx.beginPath(); ctx.ellipse(F.cx + Math.sin(a2) * F.fw * .6, F.top + F.fh * .24 + (1 - Math.cos(a2)) * F.fh * .4, F.fw * .06, F.fw * .025, a2 + .6, 0, Math.PI * 2);
+        ctx.fillStyle = '#4CB860'; ctx.fill();
+      }
+      flower(ctx, x, y, F.fw * (i % 2 ? .1 : .13), petals[i % petals.length], t * .6 + i);
+    }
+  },
+  halo(ctx, F, t) {
+    const y = F.top - F.fh * .08 + Math.sin(t * 2.4) * F.fh * .03;
+    ctx.shadowColor = '#FFE98A'; ctx.shadowBlur = F.fw * .12;
+    ctx.strokeStyle = '#FFE066'; ctx.lineWidth = F.fw * .065;
+    ctx.beginPath(); ctx.ellipse(F.cx, y, F.fw * .4, F.fh * .1, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#FFFBEA'; ctx.lineWidth = F.fw * .02; ctx.stroke();
+    for (let i = 0; i < 3; i++) {
+      ctx.globalAlpha = Math.max(0, Math.sin(t * 3 + i * 2.1));
+      star(ctx, F.cx + (i - 1) * F.fw * .55, y - F.fh * (.12 + .08 * (i % 2)), F.fw * .05, '#FFFFFF', 4, .3);
+    }
+  },
+};
+function fallY(i, t, h, speed) { return ((rand(i, 3) * 1.2 + t * speed) % 1.2 - .1) * h; }
+const SCENE_FX = {
+  confetti(ctx, w, h, t) {
+    for (let i = 0; i < 80; i++) {
+      ctx.save();
+      ctx.translate(rand(i) * w + Math.sin(t * 2 + i) * w * .02, fallY(i, t, h, .12 + .1 * rand(i, 4)));
+      ctx.rotate(t * (2 + 3 * rand(i, 5)) + i);
+      ctx.scale(Math.cos(t * 5 + i), 1);
+      ctx.fillStyle = PARTY_COLORS[i % PARTY_COLORS.length];
+      ctx.fillRect(-w * .007, -w * .011, w * .014, w * .022);
+      ctx.restore();
+    }
+  },
+  bubbles(ctx, w, h, t) {
+    for (let i = 0; i < 26; i++) {
+      const r = w * (.015 + .03 * rand(i, 6)), x = rand(i) * w + Math.sin(t * 1.5 + i) * w * .03, y = h - fallY(i, t, h, .07 + .05 * rand(i, 4));
+      const g = ctx.createRadialGradient(x - r * .3, y - r * .3, r * .1, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,.35)'); g.addColorStop(.7, 'rgba(160,220,255,.12)'); g.addColorStop(1, 'rgba(200,160,255,.45)');
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(1, r * .06); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x - r * .35, y - r * .4, r * .22, r * .12, -.7, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fill();
+    }
+  },
+  snow(ctx, w, h, t) {
+    ctx.fillStyle = '#FFFFFF';
+    for (let i = 0; i < 110; i++) {
+      const r = w * (.002 + .005 * rand(i, 6));
+      ctx.globalAlpha = .55 + .45 * rand(i, 7);
+      ctx.beginPath(); ctx.arc(rand(i) * w + Math.sin(t + i) * w * .02, fallY(i, t, h, .05 + .06 * rand(i, 4)), r, 0, Math.PI * 2); ctx.fill();
+    }
+  },
+  sakura(ctx, w, h, t) {
+    for (let i = 0; i < 45; i++) {
+      ctx.save();
+      ctx.translate(((rand(i) + t * .03) % 1) * w + Math.sin(t * 1.3 + i) * w * .03, fallY(i, t, h, .06 + .05 * rand(i, 4)));
+      ctx.rotate(t * (1 + rand(i, 5)) + i);
+      ctx.scale(1, .6 + .4 * Math.sin(t * 3 + i));
+      ctx.beginPath(); ctx.ellipse(0, 0, w * .012, w * .007, 0, 0, Math.PI * 2);
+      ctx.fillStyle = i % 3 ? '#FFB7D0' : '#FFD9E6'; ctx.fill();
+      ctx.restore();
+    }
+  },
+  balloons(ctx, w, h, t) {
+    for (let i = 0; i < 12; i++) {
+      const r = w * (.035 + .015 * rand(i, 6)), x = (i + .5) / 12 * w + Math.sin(t + i) * w * .02, y = h + r * 2 - fallY(i, t, h * 1.25, .05 + .03 * rand(i, 4));
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = Math.max(1, w * .002);
+      ctx.beginPath(); ctx.moveTo(x, y + r * 1.15); ctx.quadraticCurveTo(x + Math.sin(t * 2 + i) * r * .6, y + r * 2.2, x, y + r * 3.4); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x, y, r * .86, r * 1.05, 0, 0, Math.PI * 2); ctx.fillStyle = PARTY_COLORS[i % PARTY_COLORS.length]; ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x - r * .3, y - r * .4, r * .16, r * .28, -.4, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
+    }
+  },
+  hearts(ctx, w, h, t) {
+    for (let i = 0; i < 36; i++) {
+      ctx.save();
+      ctx.translate(rand(i) * w + Math.sin(t * 1.5 + i) * w * .025, fallY(i, t, h, .08 + .07 * rand(i, 4)));
+      ctx.rotate(Math.sin(t * 2 + i) * .3);
+      ctx.globalAlpha = .85;
+      heart(ctx, 0, 0, w * (.025 + .03 * rand(i, 6)), HEART_COLORS[i % HEART_COLORS.length]);
+      ctx.restore();
+    }
+  },
+  stars(ctx, w, h, t) {
+    ctx.shadowColor = '#FFF6B0'; ctx.shadowBlur = w * .01;
+    for (let i = 0; i < 45; i++) {
+      const k = Math.max(0, Math.sin(t * 2.6 + i * 1.37));
+      if (k < .05) continue;
+      star(ctx, rand(i) * w, rand(i, 8) * h, w * (.008 + .016 * rand(i, 6)) * k, i % 4 ? '#FFFFFF' : '#FFE45C', 4, .28);
+    }
+  },
+  emoji(ctx, w, h, t) {
+    const set = ['🥳', '😍', '🤩', '✨', '💖', '🎉', '😎', '🎓'];
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 22; i++) {
+      ctx.save();
+      ctx.translate(rand(i) * w, fallY(i, t, h, .07 + .05 * rand(i, 4)));
+      ctx.rotate(Math.sin(t * 2 + i) * .35);
+      ctx.font = `${Math.round(w * (.04 + .025 * rand(i, 6)))}px ${EMOJI_FONT}`;
+      ctx.fillText(set[i % set.length], 0, 0);
+      ctx.restore();
+    }
+  },
+};
+
+async function photoFx(i) {
+  // The filtered version of photo i with its fun overlay on top, cached until the photo, filter or overlay changes.
+  const f = filterById(state.filters[i]), layer = state.layers[i] || null;
+  if (fxCache[i]?.id !== f.id || fxCache[i]?.layer !== layer) {
+    const img = await loadImage(state.photos[i]);
+    const size = fixedSize(f) ? FX_SIZE : { width: img.naturalWidth, height: img.naturalHeight };
+    const canvas = f.id === 'normal' && !layer ? img : effectCanvas(img, f, size.width, size.height);
+    if (layer) canvas.getContext('2d').drawImage(await loadImage(layer), 0, 0, canvas.width, canvas.height);
+    fxCache[i] = { id: f.id, layer, canvas };
+  }
+  return fxCache[i].canvas;
+}
+async function setThumb(img, i) {
+  // Small photo thumbnail that shows the photo's current filter and fun overlay.
+  const f = filterById(state.filters[i]), photo = state.photos[i], layer = state.layers[i];
+  img.src = photo;
+  if ((f.id === 'normal' && !layer) || !photo) return;
+  const source = await loadImage(photo);
+  const canvas = effectCanvas(source, f, 320, 240);
+  if (layer) canvas.getContext('2d').drawImage(await loadImage(layer), 0, 0, 320, 240);
+  if (state.photos[i] === photo) img.src = canvas.toDataURL('image/jpeg', .85);
+}
+function refreshThumbs() { $$('img[data-photo]').forEach(img => setThumb(img, Number(img.dataset.photo))); }
 
 /* ---------- Countdown sound (WebAudio, no files) ---------- */
 function unlockAudio() {
@@ -123,6 +668,7 @@ function showStep(name) {
   $(`#pane-${name} [data-focus]`)?.focus({ preventScroll: true });
   window.scrollTo({ top: 0 });
   if (name === 'result') startIdle(); else stopIdle();
+  if (name === 'camera') { renderLiveEffects(); applyLiveFilter(); }
 }
 async function apiGet(url) {
   const response = await fetch(url);
@@ -136,7 +682,7 @@ async function loadTemplates() {
   container.dataset.state = 'loading';
   container.replaceChildren(...Array.from({ length: 4 }, () => Object.assign(document.createElement('div'), { className: 'template-skeleton' })));
   try {
-    state.templates = await apiGet('/api/templates');
+    state.templates = await apiGet(`${BASE}/api/templates`);
   } catch (e) {
     container.dataset.state = 'error';
     const box = document.createElement('div');
@@ -147,7 +693,10 @@ async function loadTemplates() {
     throw e;
   }
   container.dataset.state = 'ready';
-  container.style.setProperty('--count', state.templates.length);
+  const rows = state.templates.length > 8 ? 2 : 1; // more than 8 frames: two rows so cards stay readable
+  container.style.setProperty('--rows', rows);
+  container.style.setProperty('--count', Math.ceil(state.templates.length / rows));
+  container.dataset.rows = rows;
   container.replaceChildren();
   for (const template of state.templates) {
     const card = document.createElement('button');
@@ -227,6 +776,7 @@ async function startCamera() {
   video.srcObject = state.videoStream;
   await video.play();
   $('#camera-message').hidden = true;
+  applyLiveFilter();
 }
 function onCameraLost() {
   if (!['camera', 'review'].includes(state.step)) return;
@@ -272,7 +822,7 @@ function onTimerTick() {
   if (state.step === 'camera') {
     $('#countdown').hidden = true;
     updateCaptureHeading();
-    toast(allPhotosReady() ? 'Waktu sesi habis. Kamu masih bisa melanjutkan ke hasil.' : 'Waktu 2 menit habis. Tekan Ulang sesi untuk mengambil 3 foto lagi.', 'error');
+    toast(allPhotosReady() ? 'Waktu sesi habis. Kamu masih bisa melanjutkan ke hasil.' : `Waktu 2 menit habis. Tekan Ulang sesi untuk mengambil ${shotCount()} foto lagi.`, 'error');
   }
   if (state.step === 'review') {
     $$('.retake').forEach(button => button.disabled = true);
@@ -284,18 +834,19 @@ function onTimerTick() {
 function renderCameraSlots() {
   const container = $('#shot-slots');
   container.replaceChildren();
-  for (let i = 0; i < 3; i++) {
+  container.style.setProperty('--n', state.photos.length);
+  state.photos.forEach((photo, i) => {
     const shot = document.createElement('div');
     shot.className = 'shot-slot';
     shot.classList.toggle('next', i === state.currentShot && !sessionExpired());
     const tag = document.createElement('span'); tag.className = 'tag';
-    if (state.photos[i]) {
-      const img = document.createElement('img'); img.alt = `Foto ${i + 1}`; img.src = state.photos[i]; shot.append(img);
+    if (photo) {
+      const img = document.createElement('img'); img.alt = `Foto ${i + 1}`; img.dataset.photo = i; setThumb(img, i); shot.append(img);
       tag.textContent = `${i + 1}`;
       shot.append(tag);
     } else shot.textContent = i + 1;
     container.append(shot);
-  }
+  });
 }
 function updateCropGuide() {
   const slot = state.template?.slots[state.currentShot];
@@ -330,14 +881,14 @@ async function drawLivePoster() {
   $$('#live-marks .slot-mark').forEach((m, i) => m.classList.toggle('current', i === state.currentShot && !sessionExpired()));
   if (!t || !art) return;
   const token = ++state.liveDraw;
-  const imgs = await Promise.all(state.photos.map(p => p ? loadImage(p) : null));
+  const imgs = await Promise.all(state.photos.map((p, i) => p ? photoFx(i) : null));
   if (token !== state.liveDraw) return;
   const ctx = canvas.getContext('2d');
   const sx = canvas.width / t.artWidth, sy = canvas.height / t.artHeight;
   ctx.fillStyle = '#DCE2F5'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   t.slots.forEach((s, i) => {
-    const box = { x: s.x * sx, y: s.y * sy, w: s.w * sx, h: s.h * sy, r: 0 };
+    const box = { x: s.x * sx, y: s.y * sy, w: s.w * sx, h: s.h * sy, r: 0, clip: scaleClip(s, sx, sy) };
     if (imgs[i]) drawImageCover(ctx, imgs[i], box);
     else {
       ctx.fillStyle = '#97A3CF'; ctx.font = `800 ${Math.round(box.h * .4)}px "Bricolage Grotesque", sans-serif`;
@@ -347,9 +898,9 @@ async function drawLivePoster() {
   ctx.drawImage(art, 0, 0, canvas.width, canvas.height);
 }
 function updateCaptureHeading() {
-  const number = state.currentShot + 1;
+  const number = state.currentShot + 1, total = shotCount();
   const expired = sessionExpired();
-  $('#capture-title').textContent = state.retaking ? `Ulangi foto ${number}` : `Foto ${number} dari 3`;
+  $('#capture-title').textContent = state.retaking ? `Ulangi foto ${number}` : `Foto ${number} dari ${total}`;
   const taken = state.photos.filter(Boolean).length;
   let label = taken ? `Lanjutkan foto ${number}` : 'Mulai foto';
   if (state.retaking) label = `Ulangi foto ${number}`;
@@ -357,16 +908,17 @@ function updateCaptureHeading() {
   if (state.countingDown) label = 'Berhenti';
   $('#capture-label').textContent = label;
   $('#capture-button').classList.toggle('is-stop', state.countingDown);
-  $('#hud-shot').textContent = `Foto ${number}, jendela ${SLOT_NAMES[state.currentShot]}`;
+  $('#hud-shot').textContent = `Foto ${number}, jendela ${slotName(state.currentShot)}`;
   $('#capture-button').disabled = expired || (!state.countingDown && (timeRemaining() < 6 || !state.videoStream));
   const reviewButton = $('#review-button');
   reviewButton.hidden = !(allPhotosReady() && !state.countingDown);
   reviewButton.querySelector('span').textContent = state.retaking && !expired ? 'Batal ulangi' : 'Lihat hasil';
   $('#restart-button').hidden = !(expired && !allPhotosReady());
   $('#change-frame').hidden = state.countingDown;
-  let status = taken ? `Tekan Lanjutkan untuk memotret foto ${number} sampai 3.` : 'Tekan Mulai foto sekali. Kamera memotret 3 kali otomatis, hitung mundur 5 detik tiap foto.';
-  if (state.countingDown) status = `Foto ${number} dari 3, tahan pose… Tekan Berhenti untuk jeda.`;
-  else if (expired) status = allPhotosReady() ? 'Waktu habis. Lanjutkan ke hasil untuk menyimpan foto.' : 'Waktu habis sebelum 3 foto selesai. Tekan Ulang sesi untuk mencoba lagi.';
+  $$('#live-effects button').forEach(b => b.disabled = state.countingDown);
+  let status = taken ? `Tekan Lanjutkan untuk memotret foto ${number} sampai ${total}.` : `Tekan Mulai foto sekali. Kamera memotret ${total} kali otomatis, hitung mundur ${SHOT_COUNTDOWN} detik tiap foto.`;
+  if (state.countingDown) status = `Foto ${number} dari ${total}, tahan pose… Tekan Berhenti untuk jeda.`;
+  else if (expired) status = allPhotosReady() ? 'Waktu habis. Lanjutkan ke hasil untuk menyimpan foto.' : `Waktu habis sebelum ${total} foto selesai. Tekan Ulang sesi untuk mencoba lagi.`;
   else if (state.retaking) status = `Foto ${number} akan diganti. Foto lain tidak berubah.`;
   $('#camera-status').textContent = status;
   document.body.classList.toggle('counting', state.countingDown);
@@ -378,7 +930,7 @@ async function createNewSession() {
   countdownAbort = true;
   clearInterval(state.interval);
   state.endsAt = 0;
-  state.photos = [null, null, null];
+  state.photos = Array(shotCount()).fill(null);
   state.currentShot = 0;
   state.retaking = false;
   state.countingDown = false;
@@ -398,20 +950,21 @@ async function createNewSession() {
 function captureVideoFrame() {
   const video = $('#camera-video');
   if (video.readyState < 2 || !video.videoWidth) throw new Error('Video kamera belum siap.');
-  const c = document.createElement('canvas');
-  c.width = 1600; c.height = 1200; // 4:3 per shot
+  const c = blankCanvas(1600, 1200); // 4:3 per shot, always raw — filters and fun overlays are applied at render time
   const ctx = c.getContext('2d', { alpha: false });
-  const vw = video.videoWidth, vh = video.videoHeight;
-  const sourceRatio = vw / vh;
-  const wanted = 4 / 3;
-  let sw = vw, sh = vh, sx = 0, sy = 0;
-  if (sourceRatio > wanted) { sw = vh * wanted; sx = (vw - sw) / 2; }
-  else { sh = vw / wanted; sy = (vh - sh) / 2; }
   if ($('#mirror-camera').checked) { ctx.translate(c.width, 0);ctx.scale(-1, 1); }
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  drawImageCover(ctx, video, { x: 0, y: 0, w: c.width, h: c.height, r: 0 });
   return c.toDataURL('image/jpeg', .95);
+}
+function captureOverlayLayer() {
+  // The fun overlay at this exact moment, as a transparent layer mirrored like the photo; null without one.
+  if (state.liveOverlay === 'none') return null;
+  const c = blankCanvas(1600, 1200), ctx = c.getContext('2d');
+  if ($('#mirror-camera').checked) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+  drawOverlay(ctx, c.width, c.height, state.liveOverlay, performance.now() / 1000);
+  return c.toDataURL('image/png');
 }
 function restartAnimation(element, className) {
   element.classList.remove(className); void element.offsetWidth; element.classList.add(className);
@@ -424,6 +977,7 @@ async function countdownAndShoot() {
     toast('Waktu tidak cukup atau kamera belum siap.', 'error'); return;
   }
   unlockAudio();
+  if (!$('#effect-grid').hidden) closeEffectGrid();
   state.countingDown = true;
   countdownAbort = false;
   stopRequested = false;
@@ -447,6 +1001,10 @@ async function countdownAndShoot() {
       display.hidden = true;
       const shot = state.currentShot;
       state.photos[shot] = captureVideoFrame();
+      state.layers[shot] = captureOverlayLayer();
+      state.filters[shot] = state.liveFilter;
+      state.overlays[shot] = state.liveOverlay;
+      fxCache[shot] = null;
       shutterSound();
       restartAnimation($('#flash'), 'go');
       if (state.retaking || allPhotosReady()) break;
@@ -468,7 +1026,7 @@ async function countdownAndShoot() {
 }
 async function showShotPreview(shot) {
   const box = $('#shot-preview');
-  box.querySelector('img').src = state.photos[shot];
+  setThumb(box.querySelector('img'), shot);
   box.querySelector('span').textContent = `Foto ${shot + 1} tersimpan`;
   box.hidden = false;
   restartAnimation(box, 'show');
@@ -491,7 +1049,7 @@ function changeFrame(event) {
   countdownAbort = true;
   clearInterval(state.interval);
   state.endsAt = 0;
-  state.photos = [null, null, null];
+  state.photos = Array(shotCount()).fill(null);
   stopCamera();
   showStep('template');
 }
@@ -504,15 +1062,19 @@ function disarmChangeFrame() {
 }
 
 /* ---------- Compositing ---------- */
+// Staggered/tilted frames carry a window polygon so a photo never paints into the neighbouring window.
+function scaleClip(slot, sx, sy) { return slot.clip?.map(([x, y]) => [x * sx, y * sy]); }
 function drawImageCover(ctx, img, box, filter = 'none') {
-  const { x, y, w, h, r } = box;
+  const { x, y, w, h, r, clip } = box;
   const frameAspect = w / h;
-  const sourceAspect = img.naturalWidth / img.naturalHeight;
-  let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
-  if (sourceAspect > frameAspect) { sw = img.naturalHeight * frameAspect; sx = (img.naturalWidth - sw) / 2; }
-  else { sh = img.naturalWidth / frameAspect; sy = (img.naturalHeight - sh) / 2; }
+  // Works for <img>, <video> and <canvas> sources.
+  const iw = img.naturalWidth || img.videoWidth || img.width, ih = img.naturalHeight || img.videoHeight || img.height;
+  let sx = 0, sy = 0, sw = iw, sh = ih;
+  if (iw / ih > frameAspect) { sw = ih * frameAspect; sx = (iw - sw) / 2; }
+  else { sh = iw / frameAspect; sy = (ih - sh) / 2; }
   ctx.save();ctx.beginPath();
-  if (r && typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, r);
+  if (clip) clip.forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); // tilted window outline
+  else if (r && typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, r);
   else ctx.rect(x, y, w, h);
   ctx.clip();
   if (filter !== 'none') ctx.filter = filter;
@@ -520,22 +1082,21 @@ function drawImageCover(ctx, img, box, filter = 'none') {
   ctx.restore();
 }
 async function renderPoster(width, height, { stickers = true } = {}) {
-  if (!allPhotosReady()) throw new Error('Ketiga foto harus diambil terlebih dahulu.');
+  if (!allPhotosReady()) throw new Error('Semua foto harus diambil terlebih dahulu.');
   const template = state.template;
   const art = state.templateImage || await loadImage(template.asset);
-  const imgs = await Promise.all(state.photos.map(photo => loadImage(photo)));
+  const imgs = await Promise.all(state.photos.map((_, i) => photoFx(i)));
   const canvas = document.createElement('canvas');
   canvas.width = width;canvas.height = height;
   const ctx = canvas.getContext('2d', { alpha: false });
   const sx = width / template.artWidth, sy = height / template.artHeight;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;ctx.imageSmoothingQuality = 'high';
-  const filter = filterCss(FILTERS.find(f => f.id === state.filter) || FILTERS[0], width * .0008);
   template.slots.forEach((slot, index) => {
     drawImageCover(ctx, imgs[index], {
       x: slot.x * sx, y: slot.y * sy,
-      w: slot.w * sx, h: slot.h * sy, r: slot.r * (sx + sy) / 2,
-    }, filter);
+      w: slot.w * sx, h: slot.h * sy, r: slot.r * (sx + sy) / 2, clip: scaleClip(slot, sx, sy),
+    });
   });
   // The frame casts a soft shadow into each window, so photos sit inside the art instead of looking pasted on.
   ctx.save();
@@ -544,7 +1105,7 @@ async function renderPoster(width, height, { stickers = true } = {}) {
   ctx.shadowOffsetY = 2 * sy;
   ctx.drawImage(art, 0, 0, width, height);
   ctx.restore();
-  if (stickers) drawStickers(ctx, width, height);
+  if (stickers) await drawStickers(ctx, width, height);
   return canvas;
 }
 
@@ -558,12 +1119,13 @@ async function showReview() {
   placeSlotMarks($('#review-marks'), template);
   const reviewList = $('#review-shots');
   reviewList.replaceChildren();
-  for (let i = 0; i < 3; i++) {
+  reviewList.dataset.count = state.photos.length;
+  state.photos.forEach((_, i) => {
     const item = document.createElement('div'); item.className = 'review-shot';
-    const img = document.createElement('img'); img.src = state.photos[i]; img.alt = `Foto ${i + 1}`;
+    const img = document.createElement('img'); img.dataset.photo = i; setThumb(img, i); img.alt = `Foto ${i + 1}`;
     const details = document.createElement('div');
     const b = document.createElement('b'); b.textContent = `Foto ${i + 1}`;
-    const where = document.createElement('span'); where.textContent = `Jendela ${SLOT_NAMES[i]}`;
+    const where = document.createElement('span'); where.textContent = `Jendela ${slotName(i)}`;
     details.append(b, where);
     const button = document.createElement('button');
     button.type = 'button';
@@ -574,6 +1136,8 @@ async function showReview() {
     button.addEventListener('click', async () => {
       if (timeRemaining() < 6) { toast('Waktu ulang foto tidak mencukupi.', 'error'); return; }
       state.currentShot = i; state.retaking = true;
+      state.liveFilter = state.filters[i]; // camera opens with this photo's effect
+      state.liveOverlay = state.overlays[i] || 'none';
       showStep('camera'); updateCaptureHeading();
     });
     const mark = (on) => $(`#review-marks [data-slot="${i}"]`)?.classList.toggle('hover', on);
@@ -583,10 +1147,11 @@ async function showReview() {
     item.addEventListener('focusout', () => mark(false));
     item.append(img, details, button);
     reviewList.append(item);
-  }
+  });
   $('#review-expired').hidden = canRetake;
   selectReviewTab('shots');
-  renderFilterGrid();
+  state.filterTarget = -1;
+  renderFilterTab();
   renderStickers();
   const canvas = $('#preview-canvas');
   canvas.width = 720;
@@ -606,32 +1171,199 @@ function selectReviewTab(name) {
   $$('.review-tab').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
   $$('.review-panel').forEach(panel => panel.hidden = panel.dataset.panel !== name);
 }
-function renderFilterGrid() {
-  $('#filter-grid').replaceChildren(...FILTERS.map(f => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'filter-chip';
-    button.setAttribute('aria-pressed', String(f.id === state.filter));
-    const img = new Image(); img.src = state.photos[0]; img.alt = ''; img.style.filter = filterCss(f, .4);
-    const label = document.createElement('span'); label.textContent = f.label;
-    button.append(img, label);
-    button.addEventListener('click', () => { state.filter = f.id; renderFilterGrid(); renderPreview(); });
+function setPhotoFilter(id) {
+  state.photos.forEach((_, i) => { if (state.filterTarget < 0 || state.filterTarget === i) state.filters[i] = id; });
+  renderFilterTab();
+  refreshThumbs();
+  renderPreview();
+}
+function renderFilterTab() {
+  // Target row: "Semua" or one photo; the grid previews every filter on that photo.
+  const target = state.filterTarget;
+  const all = Object.assign(document.createElement('button'), { type: 'button', className: 'target-chip target-all', textContent: 'Semua' });
+  all.setAttribute('aria-pressed', String(target < 0));
+  all.addEventListener('click', () => { state.filterTarget = -1; renderFilterTab(); });
+  $('#filter-target').replaceChildren(all, ...state.photos.map((_, i) => {
+    const button = Object.assign(document.createElement('button'), { type: 'button', className: 'target-chip' });
+    button.setAttribute('aria-pressed', String(target === i));
+    button.setAttribute('aria-label', `Filter untuk foto ${i + 1}`);
+    const img = new Image(); img.alt = ''; img.dataset.photo = i; setThumb(img, i);
+    const tag = Object.assign(document.createElement('span'), { textContent: i + 1 });
+    button.append(img, tag);
+    button.addEventListener('click', () => { state.filterTarget = i; renderFilterTab(); });
     return button;
   }));
+  const index = Math.max(0, target);
+  const current = target < 0 ? (state.filters.every(id => id === state.filters[0]) ? state.filters[0] : null) : state.filters[target];
+  const grid = $('#filter-grid');
+  const chips = FILTERS.map(f => {
+    const button = Object.assign(document.createElement('button'), { type: 'button', className: 'filter-chip' });
+    button.setAttribute('aria-pressed', String(f.id === current));
+    const img = new Image(); img.alt = '';
+    const label = document.createElement('span'); label.textContent = f.label;
+    button.append(img, label);
+    button.addEventListener('click', () => setPhotoFilter(f.id));
+    return button;
+  });
+  grid.replaceChildren(...chips);
+  const photo = state.photos[index];
+  loadImage(photo).then(source => {
+    if (state.photos[index] !== photo || grid.firstChild !== chips[0]) return;
+    FILTERS.forEach((f, i) => { chips[i].querySelector('img').src = effectCanvas(source, f, 160, 120).toDataURL('image/jpeg', .8); });
+  }).catch(() => {});
 }
-function drawStickers(ctx, width, height) {
+
+/* ---------- Live camera effect ---------- */
+function renderLiveEffects() {
+  // Strip: "Semua efek" (3×3 grid) + every filter and fun overlay, grouped like the grid pages.
+  const chip = (label, pressed, onClick, extra = '') => {
+    const button = Object.assign(document.createElement('button'), { type: 'button', className: `effect-chip ${extra}`, textContent: label });
+    button.setAttribute('aria-pressed', String(pressed));
+    button.disabled = state.countingDown;
+    button.addEventListener('click', onClick);
+    return button;
+  };
+  const heading = text => Object.assign(document.createElement('span'), { className: 'effect-group', textContent: text });
+  const all = chip('▦ Semua efek', false, openEffectGrid, 'effect-all');
+  all.removeAttribute('aria-pressed');
+  const items = [all, chip('Normal', state.liveFilter === 'normal' && state.liveOverlay === 'none', () => {
+    state.liveFilter = 'normal'; state.liveOverlay = 'none'; renderLiveEffects(); applyLiveFilter();
+  })];
+  for (const page of EFFECT_PAGES) {
+    items.push(heading(page.label));
+    if (page.kind === 'filter') {
+      for (const f of FILTERS.filter(f => f.group === page.id)) items.push(chip(f.label, f.id === state.liveFilter, () => selectLiveEffect('filter', f.id)));
+    } else {
+      for (const o of OVERLAYS.filter(o => o.group === page.id)) items.push(chip(`${o.icon} ${o.label}`, o.id === state.liveOverlay, () => selectLiveEffect('overlay', o.id === state.liveOverlay ? 'none' : o.id)));
+    }
+  }
+  $('#live-effects').replaceChildren(...items);
+}
+function selectLiveEffect(kind, id) {
+  if (kind === 'filter') state.liveFilter = id; else state.liveOverlay = id;
+  renderLiveEffects(); applyLiveFilter();
+}
+function liveNeedsCanvas() { return fixedSize(filterById(state.liveFilter)) || state.liveOverlay !== 'none'; }
+function applyLiveFilter() {
+  // Plain CSS filters style the <video> directly; distortions, pixel effects and fun overlays are redrawn
+  // every frame into a canvas over it (video → effect → overlay, the same order as the finished photo).
+  const f = filterById(state.liveFilter), canvasMode = liveNeedsCanvas();
+  $('#camera-video').style.filter = canvasMode ? '' : filterCss(f, 1.5);
+  $('#live-effect').hidden = !canvasMode;
+  if (overlayById(state.liveOverlay).group === 'face') loadFaceDetector();
+  cancelAnimationFrame(liveFxRaf);
+  liveFxRaf = canvasMode ? requestAnimationFrame(liveFxLoop) : 0;
+}
+const liveSource = blankCanvas(LIVE_FX_SIZE.width, LIVE_FX_SIZE.height);
+function drawLiveSource(detect) {
+  // Unmirrored 4:3 video frame; face detection runs on it when a face overlay needs it.
+  const ctx = liveSource.getContext('2d', { willReadFrequently: true });
+  drawImageCover(ctx, $('#camera-video'), { x: 0, y: 0, w: liveSource.width, h: liveSource.height, r: 0 });
+  if (detect) detectFaces(liveSource);
+  return liveSource;
+}
+function liveFxLoop(now) {
+  const video = $('#camera-video');
+  if (!liveNeedsCanvas() || state.step !== 'camera' || !state.videoStream) { liveFxRaf = 0; return; }
+  if (video.readyState >= 2 && $('#effect-grid').hidden) {
+    const out = $('#live-effect'), { width, height } = LIVE_FX_SIZE;
+    effectCanvas(drawLiveSource(overlayById(state.liveOverlay).group === 'face'), filterById(state.liveFilter), width, height, out);
+    drawOverlay(out.getContext('2d'), width, height, state.liveOverlay, now / 1000); // overlay stays crisp on top of the effect
+  }
+  liveFxRaf = requestAnimationFrame(liveFxLoop);
+}
+
+/* ---------- 3×3 effect grid, like Photo Booth on a Mac ---------- */
+const TILE = { width: 240, height: 180 };
+const tileSource = blankCanvas(TILE.width, TILE.height);
+let gridRaf = 0, gridLast = 0;
+function pageItems(page) {
+  const list = page.kind === 'filter' ? FILTERS : OVERLAYS;
+  const items = list.filter(item => item.group === page.id).slice(0, 8);
+  return [...items.slice(0, 4), list[0], ...items.slice(4)]; // Normal / no overlay in the middle
+}
+function openEffectGrid() {
+  if (state.countingDown) return;
+  $('#effect-grid').hidden = false;
+  renderEffectGrid();
+  cancelAnimationFrame(gridRaf);
+  gridRaf = requestAnimationFrame(gridLoop);
+}
+function closeEffectGrid() {
+  $('#effect-grid').hidden = true;
+  cancelAnimationFrame(gridRaf); gridRaf = 0;
+  applyLiveFilter();
+}
+function renderEffectGrid() {
+  const page = EFFECT_PAGES.find(p => p.id === state.effectPage) || EFFECT_PAGES[0];
+  if (page.id === 'face') loadFaceDetector();
+  $('#effect-tabs').replaceChildren(...EFFECT_PAGES.map(p => {
+    const tab = Object.assign(document.createElement('button'), { type: 'button', className: 'effect-tab', textContent: p.label });
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-selected', String(p.id === page.id));
+    tab.addEventListener('click', () => { state.effectPage = p.id; renderEffectGrid(); });
+    return tab;
+  }));
+  $('#effect-tiles').replaceChildren(...pageItems(page).map(item => {
+    const tile = Object.assign(document.createElement('button'), { type: 'button', className: 'effect-tile' });
+    const current = page.kind === 'filter' ? state.liveFilter : state.liveOverlay;
+    tile.setAttribute('aria-pressed', String(item.id === current));
+    const canvas = blankCanvas(TILE.width, TILE.height);
+    const label = document.createElement('span');
+    label.textContent = item.id === 'none' ? 'Normal' : item.label;
+    tile.append(canvas, label);
+    tile.addEventListener('click', () => { selectLiveEffect(page.kind, item.id); closeEffectGrid(); });
+    return tile;
+  }));
+}
+function gridLoop(now) {
+  const video = $('#camera-video');
+  if ($('#effect-grid').hidden || state.step !== 'camera' || !state.videoStream) { gridRaf = 0; return; }
+  gridRaf = requestAnimationFrame(gridLoop);
+  if (now - gridLast < 80 || video.readyState < 2) return; // ~12 fps is plenty for nine previews
+  gridLast = now;
+  const page = EFFECT_PAGES.find(p => p.id === state.effectPage) || EFFECT_PAGES[0], items = pageItems(page), t = now / 1000;
+  const source = tileSource.getContext('2d', { willReadFrequently: true });
+  if (page.id === 'face') source.drawImage(drawLiveSource(true), 0, 0, TILE.width, TILE.height); // also runs face detection
+  else drawImageCover(source, video, { x: 0, y: 0, w: TILE.width, h: TILE.height, r: 0 });
+  $$('#effect-tiles canvas').forEach((canvas, i) => {
+    const item = items[i];
+    if (!item) return;
+    if (page.kind === 'filter') { effectCanvas(tileSource, item, TILE.width, TILE.height, canvas); return; }
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(tileSource, 0, 0);
+    drawOverlay(ctx, TILE.width, TILE.height, item.id, t);
+  });
+}
+
+/* ---------- Stickers ---------- */
+function stickerArt(src) {
+  if (!artCache.has(src)) artCache.set(src, loadImage(src));
+  return artCache.get(src);
+}
+function stickerName(s) {
+  if (s.emoji) return s.emoji;
+  return decodeURIComponent(s.src.split('/').pop().split('?')[0]).replace(/^\d+[-_ ]*/, '').replace(/\.\w+$/, '').replace(/[-_]+/g, ' ');
+}
+async function drawStickers(ctx, width, height) {
+  const arts = await Promise.all(state.stickers.map(s => s.src ? stickerArt(s.src).catch(() => null) : null));
   ctx.save();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for (const s of state.stickers) {
-    ctx.font = `${Math.round(s.size * width)}px ${EMOJI_FONT}`;
-    ctx.fillText(s.emoji, s.x * width, s.y * height);
-  }
+  state.stickers.forEach((s, i) => {
+    const size = s.size * width;
+    ctx.save();
+    ctx.translate(s.x * width, s.y * height);
+    ctx.rotate(s.rot * Math.PI / 180);
+    if (arts[i]) ctx.drawImage(arts[i], -size / 2, -size * arts[i].naturalHeight / arts[i].naturalWidth / 2, size, size * arts[i].naturalHeight / arts[i].naturalWidth);
+    else if (s.emoji) { ctx.font = `${Math.round(size)}px ${EMOJI_FONT}`; ctx.fillText(s.emoji, 0, 0); }
+    ctx.restore();
+  });
   ctx.restore();
 }
-function addSticker(emoji) {
+function addSticker(art) {
   if (state.stickers.length >= MAX_STICKERS) { toast(`Maksimal ${MAX_STICKERS} stiker. Hapus salah satu dulu.`, 'error'); return; }
   const n = state.stickers.length;
-  state.stickers.push({ emoji, x: .5 + (n % 3 - 1) * .12, y: .5 + (Math.floor(n / 3) % 3 - 1) * .1, size: .14 });
+  state.stickers.push({ ...art, x: .5 + (n % 3 - 1) * .12, y: .5 + (Math.floor(n / 3) % 3 - 1) * .1, size: art.src ? .24 : .14, rot: 0 });
   state.selectedSticker = state.stickers.length - 1;
   renderStickers();
 }
@@ -639,8 +1371,8 @@ function selectSticker(index) {
   state.selectedSticker = index;
   $$('#sticker-layer .sticker').forEach((el, i) => el.classList.toggle('selected', i === index));
   const s = state.stickers[index];
-  ['#sticker-smaller', '#sticker-bigger', '#sticker-delete'].forEach(id => $(id).disabled = !s);
-  $('#sticker-tools-label').textContent = s ? `Stiker ${s.emoji} dipilih` : 'Pilih stiker di foto untuk mengubahnya';
+  ['#sticker-smaller', '#sticker-bigger', '#sticker-rotl', '#sticker-rotr', '#sticker-delete'].forEach(id => $(id).disabled = !s);
+  $('#sticker-tools-label').textContent = s ? `Stiker ${stickerName(s)} dipilih` : 'Pilih stiker di foto untuk mengubahnya';
   placeStickerX();
 }
 function placeStickerX() {
@@ -656,6 +1388,7 @@ function placeSticker(el, s) {
   el.style.left = `${s.x * 100}%`;
   el.style.top = `${s.y * 100}%`;
   el.style.setProperty('--size', s.size);
+  el.style.setProperty('--rot', `${s.rot}deg`);
   if (s === state.stickers[state.selectedSticker]) placeStickerX();
 }
 function renderStickers() {
@@ -663,8 +1396,9 @@ function renderStickers() {
     const el = document.createElement('button');
     el.type = 'button';
     el.className = 'sticker';
-    el.textContent = s.emoji;
-    el.setAttribute('aria-label', `Stiker ${s.emoji}. Geser atau pakai tombol panah untuk memindahkan.`);
+    if (s.src) el.append(Object.assign(new Image(), { src: s.src, alt: '', draggable: false }));
+    else el.textContent = s.emoji;
+    el.setAttribute('aria-label', `Stiker ${stickerName(s)}. Geser atau pakai tombol panah untuk memindahkan.`);
     placeSticker(el, s);
     el.addEventListener('pointerdown', event => {
       event.preventDefault();
@@ -694,10 +1428,10 @@ function renderStickers() {
   $('#sticker-count').textContent = state.stickers.length;
   $('#sticker-count').hidden = !state.stickers.length;
 }
-function resizeSticker(factor) {
+function editSticker(change) {
   const s = state.stickers[state.selectedSticker];
   if (!s) return;
-  s.size = clamp(s.size * factor, .06, .4);
+  change(s);
   placeSticker($$('#sticker-layer .sticker')[state.selectedSticker], s);
 }
 function deleteSticker() {
@@ -706,8 +1440,41 @@ function deleteSticker() {
   state.selectedSticker = -1;
   renderStickers();
 }
+function renderStickerPicker() {
+  const button = (art, label, content) => {
+    const b = Object.assign(document.createElement('button'), { type: 'button', className: 'emoji-btn' });
+    b.setAttribute('aria-label', `Tempel stiker ${label}`);
+    b.append(content);
+    b.addEventListener('click', () => addSticker(art));
+    return b;
+  };
+  $('#sticker-grid').replaceChildren(...state.stickerSources.map(src =>
+    button({ src }, stickerName({ src }), Object.assign(new Image(), { src, alt: '', loading: 'lazy', draggable: false }))));
+  $('#sticker-grid').hidden = !state.stickerSources.length;
+  $('#emoji-grid').replaceChildren(...EMOJIS.map(emoji => button({ emoji }, emoji, emoji)));
+}
+function applyRetentionText() {
+  // Privacy copy follows the server's RETENTION_DAYS (0 = kept permanently for the organisers).
+  const days = window.RETENTION_DAYS ?? 7;
+  const text = days > 0 ? {
+    consent: `Saya setuju foto dan data kontak disimpan sementara, maksimal ${days} hari, untuk keperluan unduh. Siapa pun yang memegang link hasil foto dapat membukanya.`,
+    size: `JPG 2160 × 3840 px, maksimal 20 MB, disimpan ${days} hari.`,
+    qr: `Buka kamera HP, arahkan ke QR, lalu ketuk link yang muncul. Foto HD bisa diunduh selama ${days} hari.`,
+  } : {
+    consent: 'Saya setuju foto dan data kontak (nama, program studi, WhatsApp) disimpan oleh panitia Labkom sebagai dokumentasi acara. Siapa pun yang memegang link hasil foto dapat membukanya.',
+    size: 'JPG 2160 × 3840 px, maksimal 20 MB, link tidak kedaluwarsa.',
+    qr: 'Buka kamera HP, arahkan ke QR, lalu ketuk link yang muncul. Foto HD bisa diunduh kapan saja.',
+  };
+  $$('[data-retention]').forEach(el => { el.textContent = text[el.dataset.retention]; });
+}
 function resetEdits() {
-  state.filter = 'normal';
+  state.filters = Array(shotCount()).fill('normal');
+  state.filterTarget = -1;
+  state.liveFilter = 'normal';
+  state.liveOverlay = 'none';
+  state.overlays = Array(shotCount()).fill('none');
+  state.layers = Array(shotCount()).fill(null);
+  fxCache.length = 0;
   state.stickers = [];
   state.selectedSticker = -1;
 }
@@ -755,7 +1522,7 @@ async function confirmResult() {
     form.append('consent', 'true');
     form.append('image', blob, 'photobooth.jpg');
     let response;
-    try { response = await fetch('/api/results', { method: 'POST', body: form }); }
+    try { response = await fetch(`${BASE}/api/results`, { method: 'POST', body: form }); }
     catch { throw new Error('Tidak bisa terhubung ke server photobooth. Periksa jaringan, lalu coba simpan lagi.'); }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `Server menolak foto (kode ${response.status}). Coba simpan lagi.`);
@@ -801,7 +1568,7 @@ function resetAll() {
   countdownAbort = true;
   stopCamera();clearInterval(state.interval);
   state.profile = null; state.template = null; state.templateImage = null; state.artPromise = null;
-  state.photos = [null, null, null]; state.endsAt = 0; state.result = null;
+  state.photos = Array(shotCount()).fill(null); state.endsAt = 0; state.result = null;
   resetEdits();
   $('#registration-form').reset();
   $$('.field input').forEach(input => setFieldError(input, ''));
@@ -854,7 +1621,8 @@ function setupEvents() {
     await createNewSession();
   });
   $$('[data-back]').forEach(b => b.addEventListener('click', () => showStep(b.dataset.back)));
-  $('#mirror-camera').addEventListener('change', e => $('#camera-video').classList.toggle('not-mirrored', !e.target.checked));
+  $('#mirror-camera').addEventListener('change', e => $$('#camera-video, #live-effect, #effect-grid').forEach(el => el.classList.toggle('not-mirrored', !e.target.checked)));
+  $('#effect-grid-close').addEventListener('click', closeEffectGrid);
   $('#capture-button').addEventListener('click', countdownAndShoot);
   $('#review-button').addEventListener('click', showReview);
   $('#restart-button').addEventListener('click', createNewSession);
@@ -863,14 +1631,12 @@ function setupEvents() {
   $('#change-frame').addEventListener('click', changeFrame);
   $('#confirm-button').addEventListener('click', confirmResult);
   $$('.review-tab').forEach(tab => tab.addEventListener('click', () => selectReviewTab(tab.dataset.tab)));
-  $('#emoji-grid').replaceChildren(...EMOJIS.map(emoji => {
-    const button = Object.assign(document.createElement('button'), { type: 'button', className: 'emoji-btn', textContent: emoji });
-    button.setAttribute('aria-label', `Tempel stiker ${emoji}`);
-    button.addEventListener('click', () => addSticker(emoji));
-    return button;
-  }));
-  $('#sticker-smaller').addEventListener('click', () => resizeSticker(.8));
-  $('#sticker-bigger').addEventListener('click', () => resizeSticker(1.25));
+  renderStickerPicker();
+  applyRetentionText();
+  $('#sticker-smaller').addEventListener('click', () => editSticker(s => s.size = clamp(s.size * .8, .06, .5)));
+  $('#sticker-bigger').addEventListener('click', () => editSticker(s => s.size = clamp(s.size * 1.25, .06, .5)));
+  $('#sticker-rotl').addEventListener('click', () => editSticker(s => s.rot = (s.rot - 15) % 360));
+  $('#sticker-rotr').addEventListener('click', () => editSticker(s => s.rot = (s.rot + 15) % 360));
   $('#sticker-delete').addEventListener('click', deleteSticker);
   $('#sticker-x').addEventListener('click', deleteSticker);
   try { $('#sound-toggle').checked = localStorage.getItem('photobooth-sound') !== 'off'; } catch {}
@@ -899,6 +1665,7 @@ function setupEvents() {
 }
 (async function init() {
   setupEvents();
+  apiGet(`${BASE}/api/stickers`).then(list => { state.stickerSources = list; renderStickerPicker(); }).catch(() => {}); // emoji still work without it
   try { await loadTemplates(); }
   catch (e) { toast('Gagal memuat template. Jalankan server dan coba refresh.', 'error'); }
 })();

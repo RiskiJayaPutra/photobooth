@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="360" viewBox="0 0 440 360">
+  <path fill="#FFD84D" stroke="#0C1333" stroke-width="12" stroke-linejoin="round" d="M220 16l36 54 62-30 4 66 68-4-34 58 60 34-62 26 26 62-68-10-12 68-50-46-50 46-12-68-68 10 26-62-62-26 60-34-34-58 68 4 4-66 62 30z"/>
+  <text x="220" y="210" text-anchor="middle" font-family="'Arial Black','Segoe UI Black','Segoe UI',sans-serif" font-weight="900" font-size="76" fill="#fff" stroke="#0C1333" stroke-width="10" paint-order="stroke" transform="rotate(-8 220 190)">Keren!</text>
+</svg>

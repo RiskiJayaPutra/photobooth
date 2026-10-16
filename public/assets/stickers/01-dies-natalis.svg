@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs><path id="arc" d="M70 200a130 130 0 0 1 260 0"/><path id="arc2" d="M84 214a116 116 0 0 0 232 0"/></defs>
+  <g transform="translate(200 200)">
+    <path fill="#fff" d="M0-190l26 22 33-9 14 31 33 4-1 34 28 19-15 30 15 30-28 19 1 34-33 4-14 31-33-9-26 22-26-22-33 9-14-31-33-4 1-34-28-19 15-30-15-30 28-19-1-34 33-4 14-31 33 9z"/>
+    <path fill="#5CB8D7" d="M0-176l23 19 29-8 12 27 30 4-1 30 25 17-13 27 13 27-25 17 1 30-30 4-12 27-29-8-23 19-23-19-29 8-12-27-30-4 1-30-25-17 13-27-13-27 25-17-1-30 30-4 12-27 29 8z"/>
+    <circle r="132" fill="#0C1333"/>
+    <circle r="120" fill="none" stroke="#5CB8D7" stroke-width="4" stroke-dasharray="2 10" stroke-linecap="round"/>
+  </g>
+  <g font-family="'Arial Black','Segoe UI Black','Segoe UI',sans-serif" font-weight="900" fill="#fff" text-anchor="middle">
+    <text font-size="30" letter-spacing="3"><textPath href="#arc" startOffset="50%">DIES NATALIS</textPath></text>
+    <text font-size="96" y="236" x="200" fill="#FFD84D">2026</text>
+    <text font-size="22" letter-spacing="2" fill="#5CB8D7"><textPath href="#arc2" startOffset="50%">TEKNIK UNILA</textPath></text>
+  </g>
+  <path fill="#FFD84D" d="M160 140l6 12 13 2-10 9 3 13-12-6-12 6 3-13-10-9 13-2zM240 140l6 12 13 2-10 9 3 13-12-6-12 6 3-13-10-9 13-2z"/>
+</svg>

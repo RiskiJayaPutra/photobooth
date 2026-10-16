@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0C1333" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Admin Photobooth Labkom</title>
+  <link rel="icon" type="image/png" href="/assets/brand/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/style.css" />
+  <style>
+    body.admin { height: auto; min-height: 100%; }
+    .admin-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      padding: 16px var(--gutter); border-bottom: 1px solid var(--line); background: rgba(8, 13, 38, .7);
+      position: sticky; top: 0; z-index: 5; backdrop-filter: blur(10px); }
+    .admin-main { padding: 24px var(--gutter) 48px; display: grid; gap: 20px; max-width: 1600px; margin: 0 auto; }
+    .login { min-height: calc(100dvh - 80px); display: grid; place-items: center; padding: 24px 16px; }
+    .login form { width: min(400px, 100%); display: grid; gap: 18px; padding: 32px; border-radius: 24px;
+      background: var(--navy-800); box-shadow: inset 0 0 0 1px var(--line), 0 30px 60px -30px #000; }
+    .login h1 { font-size: 32px; }
+    .tools { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .tools input, .tools select { min-height: 52px; border-radius: 14px; border: 1.5px solid var(--line-strong);
+      background: var(--navy-950); color: var(--text); font: 600 16px var(--font-body); padding: 0 16px; }
+    .tools input { flex: 1 1 280px; }
+    .tools select { flex: 0 1 240px; }
+    .tools input:focus, .tools select:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(92, 184, 215, .22); }
+    .summary { color: var(--text-2); font-size: 15px; }
+    .summary b { color: var(--text); font-family: var(--font-display); font-size: 22px; }
+    .entries { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
+    .entry { display: grid; gap: 10px; text-align: left; padding: 10px 10px 14px; border: 0; border-radius: 18px;
+      background: var(--navy-800); color: inherit; font: inherit; cursor: pointer;
+      box-shadow: inset 0 0 0 1px var(--line); transition: transform .15s var(--ease-out), box-shadow .15s; }
+    .entry:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--cyan); }
+    .entry:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    .entry img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; background: var(--navy-950); }
+    .entry b { font-family: var(--font-display); font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; }
+    .entry .meta { display: grid; gap: 2px; font-size: 14px; color: var(--text-2); padding: 0 4px; }
+    .entry .meta span:last-child { color: var(--text-3); font-size: 13px; }
+    .empty { padding: 48px 16px; text-align: center; color: var(--text-2); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line); }
+    .viewer { position: fixed; inset: 0; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px;
+      padding: 24px; background: rgba(4, 7, 20, .92); backdrop-filter: blur(6px); }
+    .viewer img { width: 100%; height: calc(100dvh - 48px); object-fit: contain; }
+    .viewer aside { display: grid; align-content: start; gap: 14px; padding: 24px; border-radius: 20px; background: var(--navy-800);
+      box-shadow: inset 0 0 0 1px var(--line); overflow: auto; max-height: calc(100dvh - 48px); }
+    .viewer h2 { font-size: 28px; overflow-wrap: anywhere; }
+    .viewer dl { display: grid; gap: 10px; margin: 0; }
+    .viewer dt { font-size: 13px; color: var(--text-3); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+    .viewer dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+    .viewer dd a { color: var(--cyan-bright); }
+    @media (max-width: 860px) {
+      .viewer { grid-template-columns: 1fr; overflow: auto; padding: 16px; }
+      .viewer img { height: auto; max-height: 70dvh; }
+      .viewer aside { max-height: none; }
+      .entries { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    }
+  </style>
+</head>
+<body class="admin">
+  <header class="admin-bar">
+    <div class="brand">
+      <img src="/assets/brand/logo.png" alt="Laboratorium Teknik Komputer Unila" width="78" height="44" />
+      <div class="brand-text"><b>Admin Photobooth</b><span>Dies Natalis Teknik Unila 2026</span></div>
+    </div>
+    <button type="button" class="btn btn-ghost" id="logout" hidden>Keluar</button>
+  </header>
+
+  <section class="login" id="login-view" hidden>
+    <form id="login-form" novalidate>
+      <h1>Masuk admin</h1>
+      <div class="field">
+        <label for="login-user">Username</label>
+        <input id="login-user" name="username" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="login-pass">Password</label>
+        <input id="login-pass" name="password" type="password" autocomplete="current-password" required />
+      </div>
+      <p class="field-error" id="login-error" role="alert" hidden></p>
+      <button type="submit" class="btn btn-primary btn-block">Masuk</button>
+    </form>
+  </section>
+
+  <main class="admin-main" id="dash-view" hidden>
+    <div class="tools">
+      <input id="search" type="search" placeholder="Cari nama, program studi, atau nomor WhatsApp" aria-label="Cari peserta" />
+      <select id="filter-program" aria-label="Filter program studi"><option value="">Semua program studi</option></select>
+      <select id="filter-template" aria-label="Filter frame"><option value="">Semua frame</option></select>
+    </div>
+    <p class="summary" id="summary"></p>
+    <div class="entries" id="entries"></div>
+    <p class="empty" id="empty" hidden>Belum ada foto yang cocok.</p>
+  </main>
+
+  <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-labelledby="viewer-name" hidden>
+    <img id="viewer-img" alt="" />
+    <aside>
+      <h2 id="viewer-name"></h2>
+      <dl>
+        <div><dt>Program studi</dt><dd id="viewer-program"></dd></div>
+        <div><dt>WhatsApp</dt><dd><a id="viewer-wa" target="_blank" rel="noopener"></a></dd></div>
+        <div><dt>Frame</dt><dd id="viewer-template"></dd></div>
+        <div><dt>Waktu foto</dt><dd id="viewer-time"></dd></div>
+        <div><dt>Ukuran file</dt><dd id="viewer-size"></dd></div>
+      </dl>
+      <a class="btn btn-primary btn-block" id="viewer-download">Unduh foto HD</a>
+      <a class="btn btn-ghost btn-block" id="viewer-link" target="_blank" rel="noopener">Buka halaman hasil</a>
+      <button type="button" class="btn btn-quiet btn-block" id="viewer-close">Tutup (Esc)</button>
+    </aside>
+  </div>
+
+  <script src="/assets/admin.js" defer></script>
+</body>
+</html>

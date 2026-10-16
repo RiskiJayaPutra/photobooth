@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="200" viewBox="0 0 560 200">
+  <g stroke="#fff" stroke-width="14" stroke-linejoin="round">
+    <path fill="#1D6FA8" d="M20 80h90v90H20l30-45z"/>
+    <path fill="#1D6FA8" d="M540 80h-90v90h90l-30-45z"/>
+    <path fill="#0C1333" d="M80 40h400v110H80z"/>
+  </g>
+  <path fill="#0C1333" d="M110 150l-30 20V150zM450 150l30 20V150z"/>
+  <path fill="#1D6FA8" d="M20 80h90v90H20l30-45zM540 80h-90v90h90l-30-45z"/>
+  <path fill="#0C1333" d="M80 40h400v110H80z"/>
+  <path fill="#06091f" d="M80 150l30 20v-20zM480 150l-30 20v-20z"/>
+  <text x="280" y="118" text-anchor="middle" font-family="'Arial Black','Segoe UI Black','Segoe UI',sans-serif" font-weight="900" font-size="58" fill="#fff" letter-spacing="2">TEKNIK <tspan fill="#5CB8D7">UNILA</tspan></text>
+</svg>
